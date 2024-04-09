@@ -1,0 +1,101 @@
+﻿@page "/fetchdata"
+@using Service.Data
+@using Service.BrowserAgentCommunication
+@inject WeatherForecastService ForecastService
+@inject WebSocketService WebSocketService
+
+<PageTitle>Weather forecast</PageTitle>
+
+<h1>Weather forecast</h1>
+
+<p>This component demonstrates fetching data from a service.</p>
+
+@if (forecasts == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp. (C)</th>
+                <th>Temp. (F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var forecast in forecasts)
+            {
+                <tr>
+                    <td>@forecast.Date.ToShortDateString()</td>
+                    <td>@forecast.TemperatureC</td>
+                    <td>@forecast.TemperatureF</td>
+                    <td>@forecast.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    
+}
+
+@if (!WebSocketService.IsServerRunning())
+{
+    <EditForm Model="connectionParameters" OnValidSubmit="StartWebSocket">
+        <div>
+            <label>
+                Server:
+                <InputText @bind-Value="connectionParameters.Server" />
+            </label>
+            <label>
+                Port:
+                <InputText @bind-Value="connectionParameters.Port" />
+            </label>
+            <button type="submit">Start</button>
+        </div>
+        <div>
+        </div>
+    </EditForm>
+}
+else
+{
+    <EditForm Model="connectionParameters" OnValidSubmit="StopWebSocket">
+        <div>
+            <label>
+                Server:
+                <InputText @bind-Value="connectionParameters.Server" disabled/>
+            </label>
+            <label>
+                Port:
+                <InputText @bind-Value="connectionParameters.Port" disabled/>
+            </label>
+            <button type="submit">Stop</button>
+        </div>
+        <div>
+        </div>
+    </EditForm>
+}
+
+
+@code {
+    private WeatherForecast[]? forecasts;
+
+    private WebServerConnectionParameters connectionParameters = new WebServerConnectionParameters();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // forecasts = await ForecastService.GetForecastAsync(DateOnly.FromDateTime(DateTime.Now));
+    }
+
+    private async Task StartWebSocket()
+    {
+        await WebSocketService.StartWebSocketServerAsync(connectionParameters);
+    }
+
+    private void StopWebSocket()
+    {
+        WebSocketService.StopWebSocketServer();
+    }
+}
