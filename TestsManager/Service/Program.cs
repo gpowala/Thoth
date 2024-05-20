@@ -1,9 +1,6 @@
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Http.HttpResults;
-
-using Service.BrowserAgentCommunication;
+using Microsoft.AspNetCore.Mvc;
 using Service.Data;
+using Service.Recording;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +10,7 @@ builder.Services.AddServerSideBlazor();
 //builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<WeatherForecastService>();
-builder.Services.AddSingleton<WebSocketService>();
+builder.Services.AddSingleton<IRecordingService, RecordingService>();
 
 var app = builder.Build();
 
@@ -34,30 +31,36 @@ app.UseRouting();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 
-app.MapPost("/upload-screenshot", async (IFormFile file) =>
+app.MapGet("/recording/start/{guid}", (IRecordingService recording, System.Guid guid) =>
 {
-    
-    string tempFilePath = CreateTempFilePath();
-
-    // Save the uploaded file
-    using var stream = File.OpenWrite(tempFilePath);
-    await file.CopyToAsync(stream);
-
-    // Perform additional actions with the IFormFile
-    // (e.g., save to a database, process the file, etc.)
+    recording.StartSession(guid);
 
     return Results.Ok();
 });
 
-static string CreateTempFilePath()
+app.MapGet("/recording/stop/{guid}", (IRecordingService recording, System.Guid guid) =>
 {
-    var filename = $"{Guid.NewGuid()}.tmp";
-    var directoryPath = "C:/tests/screenshots";
+    recording.StopSession(guid);
 
-    if (!Directory.Exists(directoryPath))
-        Directory.CreateDirectory(directoryPath);
+    return Results.Ok();
+});
 
-    return Path.Combine(directoryPath, filename);
-}
+app.MapPost("/recording/events/click/{guid}/{x}/{y}", async (IRecordingService recording, System.Guid guid, int x, int y, IFormFile clickView) =>
+{
+    
+    using var clickViewStream = new MemoryStream();
+    await clickView.CopyToAsync(clickViewStream);
+
+    recording.RegisterClickEvent(guid, x, y, clickViewStream);
+
+    return Results.Ok();
+});
+
+app.MapGet("/recording/events/keypress/{guid}/{key}", (IRecordingService recording, System.Guid guid, string key) =>
+{
+    recording.RegisterKeypressEvent(guid, key);
+
+    return Results.Ok();
+});
 
 app.Run();

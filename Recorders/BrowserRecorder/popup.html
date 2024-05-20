@@ -1,10 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Take Screenshot</title>
+    <title>Tests Recorder</title>
+    <link href="styles.css" rel="stylesheet">
 </head>
 <body>
-    <button id="startBtn">Start Taking Screenshots</button>
+    <h3>Tests Recorder</h3>
+    <div><label>server url:</label></div>
+    <div><input type="text" id="serverUrlInput" class="connectionDetailsInput"></div>
+    <br>
+    <div><label>session id:</label></div>
+    <div><input type="text" id="sessionIdInput" class="connectionDetailsInput"></div>
+    <br>
+    <div><button id="startRecordingBtn">start recording</button><label id="recordingStartLabel" class="statusLabel" hidden>Starting recording session...</label></div>
+    <div><button id="stopRecordingBtn" hidden disabled>stop recording</button><label id="recordingStopLabel" class="statusLabel" hidden>Finishing recording session...</label></div>
+    
+    <script src="jquery/jquery-3.7.1.min.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

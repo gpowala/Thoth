@@ -1,101 +1,60 @@
 ﻿@page "/fetchdata"
 @using Service.Data
-@using Service.BrowserAgentCommunication
-@inject WeatherForecastService ForecastService
-@inject WebSocketService WebSocketService
+@using Service.Recording;
+@using Service.Recording.RecordedEvents;
+@inject IRecordingService Recording;
 
-<PageTitle>Weather forecast</PageTitle>
+<PageTitle>Create New Test</PageTitle>
 
-<h1>Weather forecast</h1>
+<h1>Create New Test</h1>
 
-<p>This component demonstrates fetching data from a service.</p>
 
-@if (forecasts == null)
+
+@if (session == null)
 {
-    <p><em>Loading...</em></p>
+    <div class="recording-session-status"><code>Preparing session...</code></div>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Temp. (C)</th>
-                <th>Temp. (F)</th>
-                <th>Summary</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var forecast in forecasts)
+    <div class="recording-session-status">
+        <code>server url: http://localhost:5072</code><br />
+        <code>session id: @session?.Guid</code><br />
+
+    @if ((session?.IsRecording ?? false) == false)
+    {
+            <code>session status: not connected</code>
+    }
+    else
+    {
+            <code>session status: connected</code>
+    }
+    </div>
+
+    @foreach (var recordedEvent in session?.RecordedEvents ?? new())
+    {
+        <div>
+            @if (recordedEvent is ClickEvent)
             {
-                <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
-                </tr>
+                <p>Timestamp: @((recordedEvent as ClickEvent)?.Timestamp)</p>
+                <p>Click coordinates: [@((recordedEvent as ClickEvent)?.X);@((recordedEvent as ClickEvent)?.Y)]</p>
+                <p>Click view:<br /><img class="recording-click-view" src="data:image/gif;base64,@Convert.ToBase64String(File.ReadAllBytes(((recordedEvent as ClickEvent)?.ClickViewFilepath)))"></p>
             }
-        </tbody>
-    </table>
-
-    
-}
-
-@if (!WebSocketService.IsServerRunning())
-{
-    <EditForm Model="connectionParameters" OnValidSubmit="StartWebSocket">
-        <div>
-            <label>
-                Server:
-                <InputText @bind-Value="connectionParameters.Server" />
-            </label>
-            <label>
-                Port:
-                <InputText @bind-Value="connectionParameters.Port" />
-            </label>
-            <button type="submit">Start</button>
         </div>
-        <div>
-        </div>
-    </EditForm>
-}
-else
-{
-    <EditForm Model="connectionParameters" OnValidSubmit="StopWebSocket">
-        <div>
-            <label>
-                Server:
-                <InputText @bind-Value="connectionParameters.Server" disabled/>
-            </label>
-            <label>
-                Port:
-                <InputText @bind-Value="connectionParameters.Port" disabled/>
-            </label>
-            <button type="submit">Stop</button>
-        </div>
-        <div>
-        </div>
-    </EditForm>
+    }
 }
 
 
 @code {
-    private WeatherForecast[]? forecasts;
-
-    private WebServerConnectionParameters connectionParameters = new WebServerConnectionParameters();
+    private RecordingSession? session;
 
     protected override async Task OnInitializedAsync()
     {
-        // forecasts = await ForecastService.GetForecastAsync(DateOnly.FromDateTime(DateTime.Now));
+        session = Recording.CreateSession();
+        session.SessionStateChanged += OnRecordingSessionStateChanged;
     }
 
-    private async Task StartWebSocket()
+    private void OnRecordingSessionStateChanged(object? sender, EventArgs e)
     {
-        await WebSocketService.StartWebSocketServerAsync(connectionParameters);
-    }
-
-    private void StopWebSocket()
-    {
-        WebSocketService.StopWebSocketServer();
+        this.InvokeAsync(StateHasChanged);
     }
 }

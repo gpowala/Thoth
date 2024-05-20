@@ -1,40 +1,58 @@
-let takingScreenshotsEnabled = false;
+let isRecording = false;
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "startTakingScreenshots") {
-        takingScreenshotsEnabled = true;
+let serverUrl = '';
+let sessionId = '';
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
+{
+    if (message.action === "tests-recorder-start-recording")
+    {
+        isRecording = true;
+
+        serverUrl = message.serverUrl;
+        sessionId = message.sessionId;
+
+        startRecording();
     }
 
-    if (message.action === "takeScreenshot" && takingScreenshotsEnabled) {
-        chrome.tabs.captureVisibleTab(sender.tab.windowId, {format: "png"}, (dataUrl) => {
-            if (chrome.runtime.lastError) {
-                console.error("Error capturing tab:", chrome.runtime.lastError.message);
-                return;
-            }
-            
-            sendScreenshot(dataUrl);
-        });
+    if (message.action === "tests-recorder-stop-recording")
+    {
+        stopRecording();
+
+        isRecording = false;
+
+        serverUrl = '';
+        sessionId = '';
+    }
+
+    if (message.action === "tests-recorder-click-event" && isRecording)
+    {    
+        recordClickEvent(sender, message.position.x, message.position.y);
+    }
+
+    if (message.action === "tests-recorder-keypress-event" && isRecording)
+    {
+        recordKeypressEvent(message.key);
     }
 });
 
-function sendToServer(formData) {
-    fetch('http://localhost:5072/upload-screenshot', {
-        method: 'POST',
-        body: formData,
-        // Add any headers your API requires. Usually, Content-Type is multipart/form-data,
-        // but when using FormData, you should omit it so the browser sets it automatically,
-        // along with the correct boundary.
-        // headers: {
-        //     'Content-Type': 'multipart/form-data' // Do not set this when using FormData
-        // },
-    })
-    .then(response => response.json())
-    .then(data => console.log('Success:', data))
-    .catch((error) => console.error('Error:', error));
+var startRecording = () =>
+{
+    fetch(serverUrl + '/recording/start/' + sessionId, {method: 'GET'})
+    .then(console.log('Recording started!'))
+    .catch((error) => console.error('Error upon recording start: ', error));
 }
 
-function dataURLtoBlob(dataurl) {
-    let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+var stopRecording = () =>
+{
+    fetch(serverUrl + '/recording/stop/' + sessionId, {method: 'GET'})
+    .then(console.log('Recording stopped!'))
+    .catch((error) => console.error('Error upon recording stop:', error));
+}
+
+function clickViewToBlob(clickView)
+{
+    let arr = clickView.split(','), mime = arr[0].match(/:(.*?);/)[1],
         bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
     while(n--){
         u8arr[n] = bstr.charCodeAt(n);
@@ -42,12 +60,33 @@ function dataURLtoBlob(dataurl) {
     return new Blob([u8arr], {type:mime});
 }
 
-function sendScreenshot(dataUrl) {
-    const blob = dataURLtoBlob(dataUrl);
-    const formData = new FormData();
-    formData.append('file', blob, 'screenshot.png');
+var recordClickEvent = (sender, x, y) =>
+{
+    var recordClickEventEndpointUrl = `${serverUrl}/recording/events/click/${sessionId}/${x}/${y}`;
 
-    // Now formData is ready to be sent to the server
-    sendToServer(formData);
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, {format: "png"}, (clickView) =>
+    {
+        if (chrome.runtime.lastError)
+        {
+            console.error("Error upon capturing tab:", chrome.runtime.lastError.message);
+        }
+        else
+        {
+            const formData = new FormData();
+            formData.append('clickView', clickViewToBlob(clickView), 'clickview.png');
+
+            fetch(recordClickEventEndpointUrl, { method: 'POST', body: formData})
+            .then(console.log('Click event recorded.'))
+            .catch((error) => console.error('Error upon click event recording: ', error));
+        }
+    });
 }
 
+var recordKeypressEvent = (key) =>
+{
+    var recordKeypressEventEndpointUrl = serverUrl + '/recording/events/keypress/' + sessionId + '/' + key;
+    
+    fetch(recordKeypressEventEndpointUrl, {method: 'GET'})
+    .then(console.log('Keypress event recorded.'))
+    .catch((error) => console.error('Error upon keypress event recording: ', error));
+}

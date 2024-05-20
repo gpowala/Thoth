@@ -1,7 +1,28 @@
-console.log('content script started');
+document.addEventListener('click', function(event)
+{
+    chrome.runtime.sendMessage(
+    {
+        action: "tests-recorder-click-event",
+        position:
+        {
+            x: event.clientX,
+            y: event.clientY
+        }
+    });
 
-document.addEventListener('click', function() {
-    console.log('sending takeScreenshot event');
-    chrome.runtime.sendMessage({action: "takeScreenshot"});
-    console.log('sent takeScreenshot event');
+    console.log('tests-recorder-click-event sent to processing script');
 });
+
+document.addEventListener('keypress', function(event)
+{
+    chrome.runtime.sendMessage(
+    {
+        action: "tests-recorder-keypress-event",
+        key: event.key
+    });
+
+    console.log('tests-recorder-keypress-event sent to processing script');
+});
+
+// add mouse move
+// add scroll
