@@ -1,0 +1,6 @@
+obj/
+bin/
+.vs/
+holidaycalculatoroutdir/
+package-lock.json
+/SdWorx/HolidayCalculator/DataApi/Service/Properties/launchSettings.json
