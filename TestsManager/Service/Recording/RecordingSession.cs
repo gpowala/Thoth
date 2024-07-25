@@ -1,5 +1,29 @@
 ﻿namespace Service.Recording
 {
+    public class GuardedEventsLog : IDisposable
+    {
+        public List<RecordedEvents.IEvent> Events { get; private set; }
+        
+        private SemaphoreSlim _semaphore;
+
+        public async Task<GuardedEventsLog> Create(List<RecordedEvents.IEvent> events, SemaphoreSlim semaphore)
+        {
+            await semaphore.WaitAsync();
+            return new GuardedEventsLog(events, semaphore);
+        }
+
+        public void Dispose()
+        {
+            _semaphore.Release();
+        }
+
+        private GuardedEventsLog(List<RecordedEvents.IEvent> events, SemaphoreSlim semaphore)
+        {
+            Events = events;
+            _semaphore = semaphore;
+        }
+    }
+
     public class RecordingSession
     {
         public System.Guid Guid { get; } = System.Guid.NewGuid();
@@ -8,9 +32,10 @@
 
         public string SessionDirectory { get; private set; } = "";
 
-        public List<RecordedEvents.IEvent> RecordedEvents { get; } = new();
-
         public event EventHandler? SessionStateChanged;
+
+        private List<RecordedEvents.IEvent> _recordedEvents = new();
+        private static object _eventsRecordLock = new();
 
         public void Start()
         {
@@ -29,19 +54,47 @@
 
         public void RegisterClickEvent(int x, int y, MemoryStream clickViewStream)
         {
-            var clickViewFilepath = $"{SessionDirectory}/{RecordedEvents.Count}-full.png";
-
-            using (var fileStream = File.OpenWrite(clickViewFilepath))
+            lock (_eventsRecordLock)
             {
-                clickViewStream.Position = 0;
-                clickViewStream.CopyTo(fileStream);
+                var clickViewFilepath = $"{SessionDirectory}/{_recordedEvents.Count}-full.png";
 
-                RecordedEvents.Add(new RecordedEvents.ClickEvent
+                using (var fileStream = File.OpenWrite(clickViewFilepath))
                 {
-                    X = x,
-                    Y = y,
-                    ClickViewFilepath = clickViewFilepath
-                });
+                    clickViewStream.Position = 0;
+                    clickViewStream.CopyTo(fileStream);
+
+                    _recordedEvents.Add(new RecordedEvents.ClickEvent
+                    {
+                        X = x,
+                        Y = y,
+                        ClickViewFilepath = clickViewFilepath
+                    });
+                }
+            }
+
+            InvokeSessionStatusChanged();
+        }
+
+        public void RegisterAreaSelectEvent(int top, int bottom, int left, int right, MemoryStream areaSelectViewStream)
+        {
+            lock (_eventsRecordLock)
+            {
+                var areaSelectViewFilepath = $"{SessionDirectory}/{_recordedEvents.Count}-full.png";
+
+                using (var fileStream = File.OpenWrite(areaSelectViewFilepath))
+                {
+                    areaSelectViewStream.Position = 0;
+                    areaSelectViewStream.CopyTo(fileStream);
+
+                    _recordedEvents.Add(new RecordedEvents.AreaSelectEvent
+                    {
+                        Top = top,
+                        Bottom = bottom,
+                        Left = left,
+                        Right = right,
+                        AreaSelectViewFilepath = areaSelectViewFilepath
+                    });
+                }
             }
 
             InvokeSessionStatusChanged();
@@ -49,10 +102,13 @@
 
         public void RegisterKeypressEvent(string key)
         {
-            RecordedEvents.Add(new RecordedEvents.KeypressEvent
+            lock (_eventsRecordLock)
             {
-                Key = key
-            });
+                _recordedEvents.Add(new RecordedEvents.KeypressEvent
+                {
+                    Key = key
+                });
+            }
 
             InvokeSessionStatusChanged();
         }

@@ -39,6 +39,11 @@ else
                 <p>Click coordinates: [@((recordedEvent as ClickEvent)?.X);@((recordedEvent as ClickEvent)?.Y)]</p>
                 <p>Click view:<br /><img class="recording-click-view" src="data:image/gif;base64,@Convert.ToBase64String(File.ReadAllBytes(((recordedEvent as ClickEvent)?.ClickViewFilepath)))"></p>
             }
+
+            @if (recordedEvent is AreaSelectEvent)
+            {
+
+            }
         </div>
     }
 }
