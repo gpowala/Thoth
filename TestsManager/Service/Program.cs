@@ -63,4 +63,14 @@ app.MapGet("/recording/events/keypress/{guid}/{key}", (IRecordingService recordi
     return Results.Ok();
 });
 
+app.MapPost("/recording/events/area-select/{guid}/{top}/{bottom}/{left}/{right}", async (IRecordingService recording, System.Guid guid, int top, int bottom, int left, int right, IFormFile areaSelectView) =>
+{
+    using var areaSelectViewStream = new MemoryStream();
+    await areaSelectView.CopyToAsync(areaSelectViewStream);
+
+    recording.RegisterAreaSelectEvent(guid, top, bottom, left, right, areaSelectViewStream);
+
+    return Results.Ok();
+});
+
 app.Run();

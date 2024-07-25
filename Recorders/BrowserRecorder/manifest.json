@@ -11,6 +11,7 @@
       {
         "matches": ["<all_urls>"],
         "js": ["contentScript.js"],
+        "css": ["contentStyles.css"],
         "run_at": "document_idle"
       }
     ],
