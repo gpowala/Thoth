@@ -2,8 +2,15 @@
 {
     public class KeypressEvent : IEvent
     {
-        public DateTime Timestamp { get; } = DateTime.Now;
+        public Guid Id {  get; set; } = Guid.NewGuid();
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
-        public required string Key { get; init; }
+        public required string Keys { get; set; }
+
+
+        public IEvent Clone()
+        {
+            return new KeypressEvent { Id = Id, Timestamp = Timestamp, Keys = Keys };
+        }
     }
 }

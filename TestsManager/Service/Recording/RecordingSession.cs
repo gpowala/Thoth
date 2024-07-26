@@ -1,29 +1,7 @@
-﻿namespace Service.Recording
+﻿using System.Diagnostics;
+
+namespace Service.Recording
 {
-    public class GuardedEventsLog : IDisposable
-    {
-        public List<RecordedEvents.IEvent> Events { get; private set; }
-        
-        private SemaphoreSlim _semaphore;
-
-        public async Task<GuardedEventsLog> Create(List<RecordedEvents.IEvent> events, SemaphoreSlim semaphore)
-        {
-            await semaphore.WaitAsync();
-            return new GuardedEventsLog(events, semaphore);
-        }
-
-        public void Dispose()
-        {
-            _semaphore.Release();
-        }
-
-        private GuardedEventsLog(List<RecordedEvents.IEvent> events, SemaphoreSlim semaphore)
-        {
-            Events = events;
-            _semaphore = semaphore;
-        }
-    }
-
     public class RecordingSession
     {
         public System.Guid Guid { get; } = System.Guid.NewGuid();
@@ -50,6 +28,11 @@
             IsRecording = false;
 
             InvokeSessionStatusChanged();
+        }
+
+        public List<RecordedEvents.IEvent> GetRecordedEvents()
+        {
+            return _recordedEvents.Select(e => e.Clone()).ToList();
         }
 
         public void RegisterClickEvent(int x, int y, MemoryStream clickViewStream)
@@ -79,7 +62,7 @@
         {
             lock (_eventsRecordLock)
             {
-                var areaSelectViewFilepath = $"{SessionDirectory}/{_recordedEvents.Count}-full.png";
+                var areaSelectViewFilepath = $"{SessionDirectory}/{_recordedEvents.Count}-area-select.png";
 
                 using (var fileStream = File.OpenWrite(areaSelectViewFilepath))
                 {
@@ -104,10 +87,22 @@
         {
             lock (_eventsRecordLock)
             {
-                _recordedEvents.Add(new RecordedEvents.KeypressEvent
+                var lastRecorderEvent = _recordedEvents.Last();
+
+                if (lastRecorderEvent != null && lastRecorderEvent is RecordedEvents.KeypressEvent)
                 {
-                    Key = key
-                });
+                    var continuedKeypressEvent = lastRecorderEvent as RecordedEvents.KeypressEvent;
+                    Debug.Assert(continuedKeypressEvent != null);
+
+                    continuedKeypressEvent.Keys = continuedKeypressEvent.Keys + key;
+                }
+                else
+                {
+                    _recordedEvents.Add(new RecordedEvents.KeypressEvent
+                    {
+                        Keys = key
+                    });
+                }
             }
 
             InvokeSessionStatusChanged();

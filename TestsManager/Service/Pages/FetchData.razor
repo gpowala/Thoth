@@ -29,20 +29,59 @@ else
             <code>session status: connected</code>
     }
     </div>
-
-    @foreach (var recordedEvent in session?.RecordedEvents ?? new())
+    
+    @foreach (var recordedEvent in session?.GetRecordedEvents() ?? new())
     {
         <div>
             @if (recordedEvent is ClickEvent)
             {
-                <p>Timestamp: @((recordedEvent as ClickEvent)?.Timestamp)</p>
-                <p>Click coordinates: [@((recordedEvent as ClickEvent)?.X);@((recordedEvent as ClickEvent)?.Y)]</p>
-                <p>Click view:<br /><img class="recording-click-view" src="data:image/gif;base64,@Convert.ToBase64String(File.ReadAllBytes(((recordedEvent as ClickEvent)?.ClickViewFilepath)))"></p>
+                <div class="card">
+                    <div class="card-header">
+                        ClickEvent
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">Id: @((recordedEvent as ClickEvent)?.Id)</div>
+                            <div class="col">Timestamp: @((recordedEvent as ClickEvent)?.Timestamp)</div>
+                            <div class="col">Coords: [@((recordedEvent as ClickEvent)?.X);@((recordedEvent as ClickEvent)?.Y)]</div>
+                        </div>
+                        <img class="recording-click-view" src="data:image/gif;base64,@Convert.ToBase64String(File.ReadAllBytes(((recordedEvent as ClickEvent)?.ClickViewFilepath)))">
+                        @* <a href="#" class="btn btn-primary">Go somewhere</a> *@
+                    </div>
+                </div>
             }
 
             @if (recordedEvent is AreaSelectEvent)
             {
+                <div class="card">
+                    <div class="card-header">
+                        AreaSelectEvent
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">Id: @((recordedEvent as AreaSelectEvent)?.Id)</div>
+                            <div class="col">Timestamp: @((recordedEvent as AreaSelectEvent)?.Timestamp)</div>
+                            <div class="col">Rect: [@((recordedEvent as AreaSelectEvent)?.Top);@((recordedEvent as AreaSelectEvent)?.Bottom);@((recordedEvent as AreaSelectEvent)?.Left);@((recordedEvent as AreaSelectEvent)?.Right)]</div>
+                            <img class="recording-click-view" src="data:image/gif;base64,@Convert.ToBase64String(File.ReadAllBytes(((recordedEvent as AreaSelectEvent)?.AreaSelectViewFilepath)))">
+                        </div>
+                    </div>
+                </div>
+            }
 
+            @if (recordedEvent is KeypressEvent)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        KeypressEvent
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">Id: @((recordedEvent as KeypressEvent)?.Id)</div>
+                            <div class="col">Timestamp: @((recordedEvent as KeypressEvent)?.Timestamp)</div>
+                            <div class="col">Keys: @((recordedEvent as KeypressEvent)?.Keys)</div>
+                        </div>
+                    </div>
+                </div>
             }
         </div>
     }

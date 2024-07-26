@@ -2,10 +2,17 @@
 {
     public class ClickEvent : IEvent
     {
-        public DateTime Timestamp { get; } = DateTime.Now;
+        public Guid Id { get; set; } = Guid.NewGuid();
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
-        public required int X { get; init; }
-        public required int Y { get; init; }
-        public required string ClickViewFilepath { get; init; }
+        public required int X { get; set; }
+        public required int Y { get; set; }
+
+        public required string ClickViewFilepath { get; set; }
+
+        public IEvent Clone()
+        {
+            return new ClickEvent { Id = Id, Timestamp = Timestamp, X = X, Y = Y, ClickViewFilepath = ClickViewFilepath };
+        }
     }
 }
