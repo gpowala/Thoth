@@ -1,3 +1,16 @@
+let isRecording = false;
+
+let serverUrl = '';
+let sessionId = '';
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
+{
+    if (message.action === "thot-tests-recorder-get-recording-status")
+    {
+        sendResponse({ isRecording: isRecording, serverUrl: serverUrl, sessionId: sessionId });
+    }
+}
+
 document.addEventListener('click', function(event)
 {
     chrome.runtime.sendMessage(
@@ -88,27 +101,23 @@ function createOverlay()
             document.body.removeChild(overlay);
             thoth_waitScreenshotInProgress = false;
 
-            chrome.runtime.sendMessage(
+            // Prevent missclicks to be considered as area selections.
+            if (Math.abs(thoth_waitScreenshotStartX - event.clientX) > 5 || Math.abs(thoth_waitScreenshotStartY - event.clientY) > 5)
             {
-                action: "tests-recorder-area-select-event",
-                rect:
+                chrome.runtime.sendMessage(
                 {
-                    top: Math.min(thoth_waitScreenshotStartY, event.clientY),
-                    bottom: Math.max(thoth_waitScreenshotStartY, event.clientY),
-                    left: Math.min(thoth_waitScreenshotStartX, event.clientX),
-                    right: Math.max(thoth_waitScreenshotStartX, event.clientX)
-                }
-            });
+                    action: "tests-recorder-area-select-event",
+                    rect:
+                    {
+                        top: Math.min(thoth_waitScreenshotStartY, event.clientY),
+                        bottom: Math.max(thoth_waitScreenshotStartY, event.clientY),
+                        left: Math.min(thoth_waitScreenshotStartX, event.clientX),
+                        right: Math.max(thoth_waitScreenshotStartX, event.clientX)
+                    }
+                });
+            }
         
             console.log('tests-recorder-area-select-event sent to processing script');
-        }
-    });
-
-    overlay.addEventListener('click', function()
-    {
-        if (!thoth_waitScreenshotInProgress)
-        {
-            document.body.removeChild(overlay);
         }
     });
 }
