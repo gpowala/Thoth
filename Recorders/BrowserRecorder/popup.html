@@ -12,14 +12,9 @@
     <div><label>session id:</label></div>
     <div><input type="text" id="sessionIdInput" class="connectionDetailsInput"></div>
     <br>
-    <div>
-        <button id="startRecordingBtn">start recording</button>
-        <button id="stopRecordingBtn" hidden disabled>stop recording</button>
-        <label id="loadingSessionInfoLabel" class="statusLabel" hidden>Loading session info...</label>
-        <label id="recordingStartLabel" class="statusLabel" hidden>Starting recording session...</label>
-        <label id="recordingLabel" class="statusLabel" hidden>Recording...</label>
-        <label id="recordingStopLabel" class="statusLabel" hidden>Finishing recording session...</label>
-    </div>
+    <div><button id="startRecordingBtn">start recording</button><label id="recordingStartLabel" class="statusLabel" hidden>Starting recording session...</label></div>
+    <div><button id="stopRecordingBtn" hidden disabled>stop recording</button><label id="recordingStopLabel" class="statusLabel" hidden>Finishing recording session...</label></div>
+    
     <script src="jquery/jquery-3.7.1.min.js"></script>
     <script src="popup.js"></script>
 </body>
