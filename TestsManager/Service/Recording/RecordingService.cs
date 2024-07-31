@@ -36,9 +36,9 @@
             sessions_[guid].RegisterKeypressEvent(key);
         }
 
-        public void RegisterAreaSelectEvent(Guid guid, int top, int bottom, int left, int rght, MemoryStream areaSelectViewStream)
+        public void RegisterAreaSelectEvent(Guid guid, int top, int bottom, int left, int right, MemoryStream areaSelectViewStream)
         {
-            throw new NotImplementedException();
+            sessions_[guid].RegisterAreaSelectEvent(top, bottom, left, right, areaSelectViewStream);
         }
 
         private Dictionary<System.Guid, RecordingSession> sessions_ = new();

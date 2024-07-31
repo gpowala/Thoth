@@ -45,7 +45,7 @@ function createOverlay()
 
     document.body.appendChild(overlay);
 
-    overlay.addEventListener('mousedown', function(event)
+    overlay.addEventListener('mousedown', (event) =>
     {
         var canvas = document.getElementsByTagName('canvas')[0];
 
@@ -62,7 +62,7 @@ function createOverlay()
         thoth_waitScreenshotInProgress = true;
     });
 
-    overlay.addEventListener('mousemove', function(event)
+    overlay.addEventListener('mousemove', (event) =>
     {
         if (thoth_waitScreenshotInProgress)
         {
@@ -81,7 +81,7 @@ function createOverlay()
         }
     });
 
-    overlay.addEventListener('mouseup', function(event)
+    overlay.addEventListener('mouseup', (event) =>
     {
         if (thoth_waitScreenshotInProgress)
         {
@@ -104,7 +104,7 @@ function createOverlay()
         }
     });
 
-    overlay.addEventListener('click', function()
+    overlay.addEventListener('click', () =>
     {
         if (!thoth_waitScreenshotInProgress)
         {

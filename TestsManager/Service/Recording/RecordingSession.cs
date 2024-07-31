@@ -1,5 +1,9 @@
 ﻿using System.Diagnostics;
 
+using System;
+using System.Drawing;
+using System.IO;
+
 namespace Service.Recording
 {
     public class RecordingSession
@@ -63,6 +67,8 @@ namespace Service.Recording
             lock (_eventsRecordLock)
             {
                 var areaSelectViewFilepath = $"{SessionDirectory}/{_recordedEvents.Count}-area-select.png";
+
+                var image = Image.FromStream(areaSelectViewStream);
 
                 using (var fileStream = File.OpenWrite(areaSelectViewFilepath))
                 {

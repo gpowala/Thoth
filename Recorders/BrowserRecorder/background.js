@@ -1,4 +1,4 @@
-let isRecording = false;
+let recordingTabId = -1;
 
 let serverUrl = '';
 let sessionId = '';
@@ -9,7 +9,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
 {
     if (message.action === "tests-recorder-start-recording")
     {
-        isRecording = true;
+        recordingTabId = getActiveTabId();
 
         serverUrl = message.serverUrl;
         sessionId = message.sessionId;
@@ -21,27 +21,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
     {
         stopRecording();
 
-        isRecording = false;
+        recordingTabId = -1;
 
         serverUrl = '';
         sessionId = '';
     }
 
-    if (message.action === "tests-recorder-click-event" && isRecording)
-    {    
-        recordClickEvent(sender, message.position.x, message.position.y);
-    }
-
-    if (message.action === "tests-recorder-area-select-event" && isRecording)
-    {    
-        recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right);
-    }
-
-    if (message.action === "tests-recorder-keypress-event" && isRecording)
+    if (recordingTabId === getActiveTabId())
     {
-        recordKeypressEvent(message.key);
+        if (message.action === "tests-recorder-click-event")
+        {    
+            recordClickEvent(sender, message.position.x, message.position.y);
+        }
+    
+        if (message.action === "tests-recorder-area-select-event")
+        {    
+            recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right);
+        }
+    
+        if (message.action === "tests-recorder-keypress-event")
+        {
+            recordKeypressEvent(message.key);
+        }
     }
 });
+
+var getActiveTabId = () =>
+{
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) =>
+    {
+        if (tabs.length !== 0)
+        {
+            console.log('Active tab: ', tabs[0].windowId);
+            return tabs[0].windowId;
+        }
+        else
+        {
+            throw Error('No active tab found');
+        }
+    });
+}
 
 var startRecording = () =>
 {
@@ -64,7 +83,7 @@ var isActive = () =>
     .catch((error) => console.error('Error upon recording is-active:', error));
 }
 
-function viewToBlob(view)
+var viewToBlob = (view) =>
 {
     let arr = view.split(','), mime = arr[0].match(/:(.*?);/)[1],
         bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
@@ -82,7 +101,7 @@ var recordClickEvent = (sender, x, y) =>
     {
         if (chrome.runtime.lastError)
         {
-            console.error("Error upon capturing tab:", chrome.runtime.lastError.message);
+            console.error("Error upon capturing tab on click:", chrome.runtime.lastError.message);
         }
         else
         {
@@ -97,26 +116,26 @@ var recordClickEvent = (sender, x, y) =>
 }
 
 var recordAreaSelectEvent = (sender, top, bottom, left, right) =>
+{
+    var recordClickEventEndpointUrl = `${serverUrl}/recording/events/area-select/${sessionId}/${top}/${bottom}/${left}/${right}`;
+
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, {format: "png"}, (areaSelectView) =>
     {
-        var recordClickEventEndpointUrl = `${serverUrl}/recording/events/area-select/${sessionId}/${top}/${bottom}/${left}/${right}`;
-    
-        chrome.tabs.captureVisibleTab(sender.tab.windowId, {format: "png"}, (areaSelectView) =>
+        if (chrome.runtime.lastError)
         {
-            if (chrome.runtime.lastError)
-            {
-                console.error("Error upon capturing tab:", chrome.runtime.lastError.message);
-            }
-            else
-            {
-                const formData = new FormData();
-                formData.append('clickView', viewToBlob(areaSelectView), 'clickview.png');
-    
-                fetch(recordClickEventEndpointUrl, { method: 'POST', body: formData})
-                .then(console.log('Click event recorded.'))
-                .catch((error) => console.error('Error upon click event recording: ', error));
-            }
-        });
-    }
+            console.error("Error upon capturing tab on area-select:", chrome.runtime.lastError.message);
+        }
+        else
+        {
+            const formData = new FormData();
+            formData.append('areaSelectView', viewToBlob(areaSelectView), 'clickview.png');
+
+            fetch(recordClickEventEndpointUrl, { method: 'POST', body: formData})
+            .then(console.log('Area-select event recorded.'))
+            .catch((error) => console.error('Error upon area-select event recording: ', error));
+        }
+    });
+}
 
 var recordKeypressEvent = (key) =>
 {
