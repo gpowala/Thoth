@@ -2,9 +2,14 @@
 {
     public class RecordingService : IRecordingService
     {
+        public RecordingService(IHttpContextAccessor httpContextAccessor)
+        {
+            httpContextAccessor_ = httpContextAccessor;
+        }
+
         public RecordingSession CreateSession()
         {
-            var session = new RecordingSession();
+            var session = new RecordingSession(httpContextAccessor_);
 
             sessions_.Add(session.Guid, session);
 
@@ -26,6 +31,11 @@
             sessions_[guid].Stop();
         }
 
+        public bool IsActive(Guid guid)
+        {
+            return sessions_.ContainsKey(guid);
+        }
+
         public void RegisterClickEvent(System.Guid guid, int x, int y, MemoryStream clickViewStream)
         {
             sessions_[guid].RegisterClickEvent(x, y, clickViewStream);
@@ -42,5 +52,6 @@
         }
 
         private Dictionary<System.Guid, RecordingSession> sessions_ = new();
+        private readonly IHttpContextAccessor httpContextAccessor_;
     }
 }

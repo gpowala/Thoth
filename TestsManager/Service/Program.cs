@@ -1,16 +1,19 @@
 using Microsoft.AspNetCore.Mvc;
 using Service.Data;
 using Service.Recording;
+using Service.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddHttpContextAccessor();
 //builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddSingleton<IRecordingService, RecordingService>();
+builder.Services.AddScoped<ClipboardService>();
 
 var app = builder.Build();
 
@@ -43,6 +46,11 @@ app.MapGet("/recording/stop/{guid}", (IRecordingService recording, System.Guid g
     recording.StopSession(guid);
 
     return Results.Ok();
+});
+
+app.MapGet("/recording/is-active/{guid}", (IRecordingService recording, System.Guid guid) =>
+{
+    return recording.IsActive(guid) ? Results.Ok() : Results.NotFound();
 });
 
 app.MapPost("/recording/events/click/{guid}/{x}/{y}", async (IRecordingService recording, System.Guid guid, int x, int y, IFormFile clickView) =>

@@ -6,7 +6,7 @@
 
 <PageTitle>Create New Test</PageTitle>
 
-<h1>Create New Test</h1>
+<h2>Create New Test</h2>
 
 @if (session == null)
 {
@@ -14,11 +14,12 @@
 }
 else
 {
-    <div class="recording-session-status">
+    <RecordingConnectionStatus ConnectionString=@session?.GetConnectionString() IsRecording=@session?.IsRecording></RecordingConnectionStatus>
+    @* <div class="recording-session-status">
         <code>server url: http://localhost:5072</code><br />
-        <code>session id: @session?.Guid</code><br />
+        <code>session id: @session?.Guid</code><br /> *@
 
-    @if ((session?.IsRecording ?? false) == false)
+    @* @if ((session?.IsRecording ?? false) == false)
     {
             <code>session status: not connected</code>
     }
@@ -26,7 +27,7 @@ else
     {
             <code>session status: connected</code>
     }
-    </div>
+    </div> *@
     
     @foreach (var recordedEvent in session?.GetRecordedEvents() ?? new())
     {

@@ -46,6 +46,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
     }
 });
 
+chrome.alarms.onAlarm.addListener((alarm) =>
+{
+    if (alarm.name === 'isSessionActive') 
+    {
+        isActive();
+    }
+});
+
 var getActiveTabId = () =>
 {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) =>
@@ -65,7 +73,11 @@ var getActiveTabId = () =>
 var startRecording = () =>
 {
     fetch(serverUrl + '/recording/start/' + sessionId, {method: 'GET'})
-    .then(console.log('Recording started!'))
+    .then(() =>
+    {
+        chrome.alarms.create('isSessionActive', { periodInMinutes: 1 });
+        console.log('Recording started!')
+    })
     .catch((error) => console.error('Error upon recording start: ', error));
 }
 
@@ -74,13 +86,18 @@ var stopRecording = () =>
     fetch(serverUrl + '/recording/stop/' + sessionId, {method: 'GET'})
     .then(console.log('Recording stopped!'))
     .catch((error) => console.error('Error upon recording stop:', error));
+
+    chrome.alarms.clear('isSessionActive');
 }
 
 var isActive = () =>
 {
     fetch(serverUrl + '/recording/is-active/' + sessionId, {method: 'GET'})
-    .then(console.log(`Session ${sessionId} is active.`))
-    .catch((error) => console.error('Error upon recording is-active:', error));
+    .catch((error) =>
+    {
+        console.error('Error upon recording is-active:', error);
+        stopRecording();
+    });
 }
 
 var viewToBlob = (view) =>

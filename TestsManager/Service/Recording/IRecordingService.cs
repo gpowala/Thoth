@@ -7,6 +7,7 @@
 
         void StartSession(System.Guid guid);
         void StopSession(System.Guid guid);
+        bool IsActive(System.Guid guid);
 
         void RegisterClickEvent(System.Guid guid, int x, int y, MemoryStream clickViewStream);
         void RegisterKeypressEvent(System.Guid guid, string key);
