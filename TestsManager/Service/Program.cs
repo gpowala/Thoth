@@ -14,6 +14,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddSingleton<IRecordingService, RecordingService>();
 builder.Services.AddScoped<ClipboardService>();
+builder.Services.AddScoped<DirectoryPickerService>();
 
 var app = builder.Build();
 

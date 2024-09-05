@@ -1,9 +1,44 @@
 ﻿@page "/"
+@using System.Diagnostics
+
+@inject IJSRuntime JS
+
+@inject Service.Utils.DirectoryPickerService DirectoryPickerService
 
 <PageTitle>Index</PageTitle>
 
-<h1>Hello, world!</h1>
+<h2>Repositories</h2>
 
-Welcome to your new app.
+Manage your tests repositories.
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+<div class="alert alert-secondary mt-4">
+    <span class="oi oi-fork me-2" aria-hidden="true"></span>
+    <strong>connect new repository</strong>
+    <br />
+    <br />
+    <div class="input-group mb-2">
+        <span class="input-group-text" id="basic-addon1">Repository Directory</span>
+        <input type="text" class="form-control" aria-label="TargetDirectory" aria-describedby="basic-addon1" value="@TargetDirectory">
+        <button type="button" class="btn btn-primary btn-sm" @onclick="ConnectToRepository">Connect <i class="oi oi-fullscreen-exit"></i></button>
+    </div>
+</div>
+
+
+
+
+@code {
+    public string TargetDirectory { get; set; } = "";
+
+    private async Task ConnectToRepository()
+    {
+        // string repositoryUrl = document.getElementById("repositoryUrl").value;
+        // string targetDirectory = document.getElementById("targetDirectory").value;
+        // string username = document.getElementById("username").value;
+        // string password = document.getElementById("password").value;
+
+        // // TODO: Implement the logic to clone the Git repository to the specified target directory using the provided credentials
+        // // Assuming the Git repository is on Azure DevOps
+        // string command = $"git clone {repositoryUrl} {targetDirectory} --username {username} --password {password}";
+        // await ExecuteCommand(command);
+    }
+}

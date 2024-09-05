@@ -6,8 +6,7 @@ $(document).ready(() => {
         $("#startRecordingBtn").hide();
         $("#stopRecordingBtn").prop( "disabled", false );
         $("#stopRecordingBtn").show();
-        $("#serverUrlInput").prop( "disabled", true );
-        $("#sessionIdInput").prop( "disabled", true );
+        $("#sessionUrlInput").prop( "disabled", true );
     } else {
         $("#stopRecordingBtn").prop( "disabled", true );
         $("#recordingStopLabel").show();
@@ -15,12 +14,10 @@ $(document).ready(() => {
         $("#stopRecordingBtn").hide();
         $("#startRecordingBtn").prop( "disabled", false );
         $("#startRecordingBtn").show();
-        $("#serverUrlInput").prop( "disabled", false );
-        $("#sessionIdInput").prop( "disabled", false );
+        $("#sessionUrlInput").prop( "disabled", false );
     }
 
-    $("#serverUrlInput").val(localStorage.getItem("tests-recorder-server-url"));
-    $("#sessionIdInput").val(localStorage.getItem("tests-recorder-session-id"));
+    $("#sessionUrlInput").val(localStorage.getItem("tests-recorder-server-url"));
 });
 
 $("#startRecordingBtn").click(() => {
@@ -29,8 +26,7 @@ $("#startRecordingBtn").click(() => {
 
     chrome.runtime.sendMessage({
         action: "tests-recorder-start-recording",
-        serverUrl: $("#serverUrlInput").val(),
-        sessionId: $("#sessionIdInput").val()
+        serverUrl: $("#sessionUrlInput").val()
     });
 
     $("#recordingStartLabel").hide();
@@ -39,8 +35,7 @@ $("#startRecordingBtn").click(() => {
     $("#stopRecordingBtn").prop( "disabled", false );
     $("#stopRecordingBtn").show();
 
-    $("#serverUrlInput").prop( "disabled", true );
-    $("#sessionIdInput").prop( "disabled", true );
+    $("#sessionUrlInput").prop( "disabled", true );
 
     localStorage.setItem("tests-recorder-is-recording", "true");
 });
@@ -57,16 +52,11 @@ $("#stopRecordingBtn").click(() => {
     $("#startRecordingBtn").prop( "disabled", false );
     $("#startRecordingBtn").show();
 
-    $("#serverUrlInput").prop( "disabled", false );
-    $("#sessionIdInput").prop( "disabled", false );
+    $("#sessionUrlInput").prop( "disabled", false );
 
     localStorage.setItem("tests-recorder-is-recording", "false");
 });
 
-$("#serverUrlInput").on("input", function() {
-    localStorage.setItem("tests-recorder-server-url", $("#serverUrlInput").val());
+$("#sessionUrlInput").on("input", function() {
+    localStorage.setItem("tests-recorder-server-url", $("#sessionUrlInput").val());
 });
-
-$("#sessionIdInput").on("input", function() {
-    localStorage.setItem("tests-recorder-session-id", $("#sessionIdInput").val());
- });
