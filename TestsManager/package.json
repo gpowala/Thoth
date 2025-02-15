@@ -1,0 +1,17 @@
+{
+  "name": "testsmanager-electron",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-packager . MyApp --platform=win32 --arch=x64"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "detect-port": "^2.1.0",
+    "electron": "^34.0.1",
+    "express": "^4.21.2"
+  }
+}

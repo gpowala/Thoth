@@ -1,0 +1,76 @@
+<div class="container">
+    <div style="display: flex; align-items: stretch;">
+        <div style="flex: 1;">
+            <div style="font-size: 1.2em; font-weight: bold; color: #3f51b5;">manage tests</div>
+            <div style="font-size: 0.8em; font-weight: normal;">manage tests in repositories</div>
+        </div>
+        <div style="flex: 1;">
+            <mat-tab-group (selectedIndexChange)="onTabChange($event)">
+                <mat-tab label="manage tests"></mat-tab>
+                <mat-tab label="create new test"></mat-tab>
+            </mat-tab-group>
+        </div>
+    </div>
+    <!-- Content area for selected tab -->
+    <div style="margin-top: 20px;">
+        <div *ngIf="selectedTabIndex == 0">
+            cascasca
+        </div>
+        <div *ngIf="selectedTabIndex == 1">
+            <mat-card style="border-radius: 0;" class="mat-elevation-z8">
+                <mat-card-content>
+                    <div style="margin-bottom: 10px;">
+                        <div style="font-size: 1.0em; font-weight: bold; color: #3f51b5; ">create new test</div>
+                        <div style="font-size: 0.8em; font-weight: normal;">provide test details for a new recording session</div>
+                    </div>
+                    <div style="margin-bottom: -10px; display: flex; justify-content: space-between;">
+                        <mat-form-field style="width: 32%;">
+                            <mat-label>repository</mat-label>
+                            <mat-select>
+                                <mat-option *ngFor="let repo of repositories" [value]="repo.id">
+                                    {{repo.name}}
+                                </mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field style="width: 32%;">
+                            <mat-label>test name</mat-label><input matInput #nameInput>
+                        </mat-form-field>
+                        <mat-form-field style="width: 32%;">
+                            <mat-label>description</mat-label><input matInput #descriptionInput>
+                        </mat-form-field>
+                    </div>
+                    <div style="padding-top: 0; display: flex; justify-content: center;">
+                        <button mat-button style="color: #3f51b5; margin-right: 10px;">create test</button>
+                        <button mat-button style="color: #3f51b5; margin-right: 10px;">cancel</button>
+                        <!-- <button mat-button style="color: #3f51b5; margin-right: 10px;" (click)="registerRepository(nameInput.value, localDirectoryInput.value, descriptionInput.value)">create test</button>
+                        <button mat-button style="color: #3f51b5;" (click)="expandRow = !expandRow">cancel</button> -->
+                    </div>
+                    <!-- <mat-stepper linear #stepper>
+                        <mat-step [editable]="false">
+                            <ng-template matStepLabel>create session</ng-template>
+                            <div style="display: flex; justify-content: center; margin-top: 10px;">
+                              <button mat-button matStepperNext>create session</button>
+                            </div>
+                        </mat-step>
+                        <mat-step [editable]="false">
+                            <ng-template matStepLabel>connect to session</ng-template>
+                            <div style="display: flex; justify-content: center; margin-top: 20px;">
+                              <button mat-button matStepperNext>start recording</button>
+                              <button mat-button (click)="stepper.reset()">cancel session</button>
+                            </div>
+                        </mat-step>
+                        <mat-step [editable]="false">
+                          <ng-template matStepLabel>Done</ng-template>
+                          <p>You are now done.</p>
+                          <div style="display: flex; justify-content: center; margin-top: 20px;">
+                            <button mat-button matStepperPrevious>publish test</button>
+                            <button mat-button (click)="stepper.reset()">Reset</button>
+                          </div>
+                        </mat-step>
+                      </mat-stepper> -->
+                </mat-card-content>
+            </mat-card>
+        </div>
+    </div>
+        
+</div>

@@ -37,6 +37,7 @@ $("#startRecordingBtn").click(() => {
 
     $("#sessionUrlInput").prop( "disabled", true );
 
+    localStorage.setItem("tests-recorder-server-url", $("#sessionUrlInput").val());
     localStorage.setItem("tests-recorder-is-recording", "true");
 });
 
@@ -57,6 +58,6 @@ $("#stopRecordingBtn").click(() => {
     localStorage.setItem("tests-recorder-is-recording", "false");
 });
 
-$("#sessionUrlInput").on("input", function() {
-    localStorage.setItem("tests-recorder-server-url", $("#sessionUrlInput").val());
-});
+// $("#sessionUrlInput").on("input", function() {
+//     localStorage.setItem("tests-recorder-server-url", $("#sessionUrlInput").val());
+// });

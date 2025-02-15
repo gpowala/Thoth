@@ -11,8 +11,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
     {
         recordingTabId = getActiveTabId();
 
-        serverUrl = message.serverUrl;
-        sessionId = message.sessionId;
+        const url = new URL(message.serverUrl);
+        serverUrl = `${url.protocol}//${url.host}`;
+        sessionId = url.searchParams.get('guid');
 
         startRecording();
     }
@@ -31,7 +32,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
     {
         if (message.action === "tests-recorder-click-event")
         {    
-            recordClickEvent(sender, message.position.x, message.position.y);
+            recordClickEvent(sender, message.window, message.position, message.scroll);
         }
     
         if (message.action === "tests-recorder-area-select-event")
@@ -72,7 +73,7 @@ var getActiveTabId = () =>
 
 var startRecording = () =>
 {
-    fetch(serverUrl + '/recording/start/' + sessionId, {method: 'GET'})
+    fetch(serverUrl + '/recording/session/start?guid=' + sessionId, {method: 'GET'})
     .then(() =>
     {
         chrome.alarms.create('isSessionActive', { periodInMinutes: 1 });
@@ -83,7 +84,7 @@ var startRecording = () =>
 
 var stopRecording = () =>
 {
-    fetch(serverUrl + '/recording/stop/' + sessionId, {method: 'GET'})
+    fetch(serverUrl + '/recording/session/stop?guid=' + sessionId, {method: 'GET'})
     .then(console.log('Recording stopped!'))
     .catch((error) => console.error('Error upon recording stop:', error));
 
@@ -92,13 +93,14 @@ var stopRecording = () =>
 
 var isActive = () =>
 {
-    fetch(serverUrl + '/recording/is-active/' + sessionId, {method: 'GET'})
+    fetch(serverUrl + '/recording/session/is-active?guid=' + sessionId, {method: 'GET'})
     .catch((error) =>
     {
         console.error('Error upon recording is-active:', error);
         stopRecording();
     });
 }
+
 
 var viewToBlob = (view) =>
 {
@@ -110,9 +112,12 @@ var viewToBlob = (view) =>
     return new Blob([u8arr], {type:mime});
 }
 
-var recordClickEvent = (sender, x, y) =>
+var recordClickEvent = (sender, window, position, scroll) =>
 {
-    var recordClickEventEndpointUrl = `${serverUrl}/recording/events/click/${sessionId}/${x}/${y}`;
+    var adjustedX = position.x + scroll.x;
+    var adjustedY = position.y + scroll.y;
+    
+    var recordClickEventEndpointUrl = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${adjustedX}&y=${adjustedY}`;
 
     chrome.tabs.captureVisibleTab(sender.tab.windowId, {format: "png"}, (clickView) =>
     {
@@ -123,7 +128,7 @@ var recordClickEvent = (sender, x, y) =>
         else
         {
             const formData = new FormData();
-            formData.append('clickView', viewToBlob(clickView), 'clickview.png');
+            formData.append('clickview', viewToBlob(clickView), 'clickview.png');
 
             fetch(recordClickEventEndpointUrl, { method: 'POST', body: formData})
             .then(console.log('Click event recorded.'))
@@ -134,7 +139,7 @@ var recordClickEvent = (sender, x, y) =>
 
 var recordAreaSelectEvent = (sender, top, bottom, left, right) =>
 {
-    var recordClickEventEndpointUrl = `${serverUrl}/recording/events/area-select/${sessionId}/${top}/${bottom}/${left}/${right}`;
+    var recordClickEventEndpointUrl = `${serverUrl}/recording/events/area-select?guid=${sessionId}&top=${top}&bottom=${bottom}&left=${left}&right=${right}`;
 
     chrome.tabs.captureVisibleTab(sender.tab.windowId, {format: "png"}, (areaSelectView) =>
     {
@@ -156,9 +161,10 @@ var recordAreaSelectEvent = (sender, top, bottom, left, right) =>
 
 var recordKeypressEvent = (key) =>
 {
-    var recordKeypressEventEndpointUrl = serverUrl + '/recording/events/keypress/' + sessionId + '/' + key;
+    var recordKeypressEventEndpointUrl = `${serverUrl}/recording/events/keypress?guid=${sessionId}&key=${key}`;
     
     fetch(recordKeypressEventEndpointUrl, {method: 'GET'})
     .then(console.log('Keypress event recorded.'))
     .catch((error) => console.error('Error upon keypress event recording: ', error));
 }
+

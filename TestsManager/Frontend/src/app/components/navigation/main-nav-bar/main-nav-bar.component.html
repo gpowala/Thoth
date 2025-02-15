@@ -1,0 +1,15 @@
+<mat-toolbar style="background-color: #c4d7ff; color: #3f51b5;">
+  <span style="font-size: 0.7em; font-weight: bold;">
+    Thot Tests Manager
+    <ng-container *ngIf="router.url.includes('repositories')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>repositories</ng-container>
+    <ng-container *ngIf="router.url.includes('scripts')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>scripts</ng-container>
+    <ng-container *ngIf="router.url.includes('manage-tests')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>manage tests</ng-container>
+    <ng-container *ngIf="router.url.includes('create-test')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>create test</ng-container>
+  </span>
+  <span class="spacer" style="flex-grow: 1;"></span>
+  <button mat-button [routerLink]="['/repositories']" style="color: #3f51b5;">repositories</button>
+  <button mat-button [routerLink]="['/scripts']" style="color: #3f51b5;">scripts</button>
+  <button mat-button [routerLink]="['/manage-tests']" style="color: #3f51b5;">manage tests</button>
+  <button mat-button [routerLink]="['/create-test']" style="color: #3f51b5;">create test</button>
+</mat-toolbar>
+

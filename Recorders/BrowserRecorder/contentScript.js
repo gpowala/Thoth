@@ -1,12 +1,24 @@
 document.addEventListener('click', function(event)
 {
+    const dpr = window.devicePixelRatio || 1; // Device Pixel Ratio
+
     chrome.runtime.sendMessage(
     {
         action: "tests-recorder-click-event",
+        window:
+        {
+            width: parseInt(window.innerWidth * dpr),
+            height: parseInt(window.innerHeight * dpr)
+        },
         position:
         {
-            x: event.clientX,
-            y: event.clientY
+            x: parseInt(event.pageX * dpr),
+            y: parseInt(event.pageY * dpr)
+        },
+        scroll:
+        {
+            x: parseInt(window.scrollX * dpr),
+            y: parseInt(window.scrollY * dpr)
         }
     });
 

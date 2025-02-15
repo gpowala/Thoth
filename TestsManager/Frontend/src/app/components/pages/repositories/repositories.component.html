@@ -1,0 +1,67 @@
+<div class="container">
+    <div style="font-size: 1.2em; font-weight: bold; color: #3f51b5;">repositories</div>
+    <div style="font-size: 0.8em; font-weight: normal;">list of registered repositories</div>
+    
+    <div class="mat-elevation-z8" style="width: 100%; margin-top: 20px;">
+        <!-- Header Row -->
+        <div style="display: flex; font-weight: bold; background-color: #c4d7ff; color: #3f51b5; padding: 12px;">
+            <div style="flex: 1;">name</div>
+            <div style="flex: 1;">local directory</div>
+            <div style="flex: 1;">description</div>
+            <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center;"></div>
+        </div>
+
+        <!-- Data Rows -->
+        <ng-container *ngFor="let repo of repositories">
+            <div style="display: flex; border-bottom: 1px solid #e0e0e0; padding: 12px;">
+                <div style="flex: 1;">{{repo.name}}</div>
+                <div style="flex: 1;">{{repo.directory}}</div>
+                <div style="flex: 1;">{{repo.description}}</div>
+                <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center;">
+                    <mat-icon style="cursor: pointer; color: #ff4081;" (click)="unregisterRepository(repo.id)">delete</mat-icon>
+                </div>
+            </div>
+        </ng-container>
+
+        <!-- Add Row -->
+        <style>
+            .hovered {
+                background-color: #c4d7ff !important;
+                cursor: pointer;
+            }
+        </style>
+        <div class="add-row" 
+            [ngStyle]="{'background-color': 'c4d7ff', 'color': '#3f51b5'}" 
+            (mouseover)="rowHovered=true" 
+            (mouseout)="rowHovered=false"
+            [ngClass]="{'hovered': rowHovered}"
+            style="display: flex; justify-content: center; align-items: center; padding: 8px;" *ngIf="!expandRow" (click)="expandRow = !expandRow">
+            <div style="display: flex; align-items: center; cursor: pointer;" >
+                <mat-icon style="font-size: 16px; display: flex; font-weight: bold; align-items: center;">add</mat-icon>
+            </div>
+        </div>
+        <div class="add-row" style="display: flex; justify-content: center; align-items: center; padding: 8px; background-color: #c4d7ff; " *ngIf="expandRow">
+                <div style="padding: 16px; width: 100%;" *ngIf="expandRow">
+                    <div style="margin-bottom: 10px;">
+                        <div style="font-size: 1.0em; font-weight: bold; color: #3f51b5; ">register new repository</div>
+                        <div style="font-size: 0.8em; font-weight: normal;">provide details to register a new repository to be used for testing</div>
+                    </div>
+                    <div style="margin-bottom: -10px; display: flex; justify-content: space-between;">
+                        <mat-form-field style="width: 32%;">
+                            <mat-label>name</mat-label><input matInput #nameInput>
+                        </mat-form-field>
+                        <mat-form-field style="width: 32%;">
+                            <mat-label>local directory</mat-label><input matInput #localDirectoryInput>
+                        </mat-form-field>
+                        <mat-form-field style="width: 32%;">
+                            <mat-label>description</mat-label><input matInput #descriptionInput>
+                        </mat-form-field>
+                    </div>
+                    <div style="padding-top: 0; display: flex; justify-content: left;">
+                        <button mat-button style="color: #3f51b5; margin-right: 10px;" (click)="registerRepository(nameInput.value, localDirectoryInput.value, descriptionInput.value)">register repository</button>
+                        <button mat-button style="color: #3f51b5;" (click)="expandRow = !expandRow">cancel</button>
+                    </div>
+                </div>
+        </div>
+    </div>
+</div>

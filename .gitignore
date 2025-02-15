@@ -4,3 +4,6 @@ bin/
 holidaycalculatoroutdir/
 package-lock.json
 /SdWorx/HolidayCalculator/DataApi/Service/Properties/launchSettings.json
+node_modules
+dist
+/TestsManager/Backend/thoth_tests_manager.sqlite

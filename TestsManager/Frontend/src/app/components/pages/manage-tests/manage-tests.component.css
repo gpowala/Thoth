@@ -1,0 +1,13 @@
+.container {
+    padding: 20px;
+}
+
+.container h2 {
+    color: #3f51b5;
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 0;
+    letter-spacing: 1px;
+    padding-bottom: 1px;
+    display: inline-block;
+}
