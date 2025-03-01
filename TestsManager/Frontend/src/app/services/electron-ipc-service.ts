@@ -27,6 +27,10 @@ export class ElectronIpcService {
           console.log('ElectronIpcService: Click event registered.');
           this.browserEventRegisteredSubject.next(undefined);
         }
+        if (message === 'KEYPRESS_EVENT_REGISTERED') {
+          console.log('ElectronIpcService: Keypress event registered.');
+          this.browserEventRegisteredSubject.next(undefined);
+        }
       });
 
       (window as any).electronAPI.onBackendReady((port: number) => {

@@ -30,7 +30,8 @@ document.addEventListener('keypress', function(event)
     chrome.runtime.sendMessage(
     {
         action: "tests-recorder-keypress-event",
-        key: event.key
+        key: event.key,
+        timestamp: performance.now()
     });
 
     console.log('tests-recorder-keypress-event sent to processing script');

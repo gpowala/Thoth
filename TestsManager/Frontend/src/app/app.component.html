@@ -1,2 +1,7 @@
-<app-main-nav-bar></app-main-nav-bar>
-<router-outlet />
+<div style="display: flex; height: 100vh;">
+    <div style="width: min(250px, 20%); background-color: #c4d7ff; color: #3f51b5;">
+        <app-main-nav-bar></app-main-nav-bar>
+    </div>
+    <div style="width: calc(100% - min(250px, 20%));"><router-outlet /></div>
+</div>
+

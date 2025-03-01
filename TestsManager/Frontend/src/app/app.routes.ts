@@ -5,6 +5,7 @@ import { ManageTestsComponent } from './components/pages/manage-tests/manage-tes
 import { CreateTestComponent } from './components/pages/create-test/create-test.component';
 
 export const routes: Routes = [
+  { path: '', redirectTo: 'repositories', pathMatch: 'full' },
   { path: 'repositories', component: RepositoriesComponent },
   { path: 'scripts', component: ScriptsComponent },
   { path: 'manage-tests', component: ManageTestsComponent },

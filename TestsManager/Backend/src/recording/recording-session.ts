@@ -6,6 +6,7 @@ import { IEvent } from './events/event-interface';
 import { HttpContext } from '../utils/http-context';
 import { ClickEvent } from './events/click-event';
 import { trimClickEventView } from '../utils/image-helpers';
+import { KeypressEvent } from './events/keypress-event';
 
 export class RecordingSession extends EventEmitter {
     public id: string;
@@ -84,12 +85,26 @@ export class RecordingSession extends EventEmitter {
         }
     }
 
+    public async registerKeypressEvent(key: string): Promise<void> {
+        try {
+            this.recordedEvents.push(new KeypressEvent(new Date(), key));
+            this.invokeKeypressEventRegistered();
+        } catch (error) {
+            console.error('Error in registerKeypressEvent:', error);
+            throw error;
+        }
+    }
+
     private invokeSessionStatusChanged(): void {
         console.log('BACKEND_EVENT:SESSION_STATUS_CHANGED');
     }
 
     private invokeClickEventRegistered(): void {
         console.log('BACKEND_EVENT:CLICK_EVENT_REGISTERED');
+    }
+
+    private invokeKeypressEventRegistered(): void {
+        console.log('BACKEND_EVENT:KEYPRESS_EVENT_REGISTERED');
     }
 
     private createSessionDirectoryIfNotExists(): string {

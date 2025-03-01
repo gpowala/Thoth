@@ -65,7 +65,7 @@ export class CreateTestComponent {
       this.electronIpcService.browserEventRegistered$.pipe(skip(1)).subscribe(() => {
         this.recordingHttpService.getRecordedEvents(this.session).subscribe({
           next: (events: any[]) => {
-            this.events = [...events.map((event: any) => {
+            const mappedEvents = events.map((event: any) => {
               const data = JSON.parse(event.data);
               switch (event.type) {
                 case 'click':
@@ -77,7 +77,30 @@ export class CreateTestComponent {
                 default:
                   throw new Error(`Unknown event type: ${event.type}`);
               }
-            })];
+            });
+            
+            mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+            
+            const processedEvents: IEvent[] = [];
+            let currentKeypressGroup: KeypressEvent[] = [];
+            
+            mappedEvents.forEach((event) => {
+              if (event instanceof KeypressEvent) {
+                currentKeypressGroup.push(event);
+              } else {
+                if (currentKeypressGroup.length > 0) {
+                  processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
+                  currentKeypressGroup = [];
+                }
+                processedEvents.push(event);
+              }
+            });
+            
+            if (currentKeypressGroup.length > 0) {
+              processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
+            }
+            
+            this.events = processedEvents;
             this.cdr.detectChanges();
           }
         });
@@ -108,5 +131,27 @@ export class CreateTestComponent {
 
   trackByFn(index: number, event: IEvent): string {
     return event.id;
+  }
+
+  private mergeKeypressEvents(keypressEvents: KeypressEvent[]): KeypressEvent {
+    if (keypressEvents.length === 0) {
+      throw new Error('Cannot merge empty keypress events array');
+    }
+    
+    if (keypressEvents.length === 1) {
+      return keypressEvents[0];
+    }
+
+    const lastEvent = keypressEvents[keypressEvents.length - 1];
+
+    const combinedKeys = keypressEvents.reduce((allKeys, event) => {
+      return allKeys.concat(event.keys);
+    }, [] as string[]);
+    
+    return new KeypressEvent(
+      lastEvent.id,
+      lastEvent.timestamp,
+      combinedKeys.join('')
+    );
   }
 }

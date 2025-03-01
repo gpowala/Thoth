@@ -55,15 +55,15 @@
                                 </div>
                                 <div>
                                     <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                                        Event Type: {{event.type}}<br>
-                                        Timestamp: {{event.timestamp | date:'medium'}}<br>
-                                        Coordinates: ({{($any(event)).x}}, {{$any(event).y}})
+                                        Event Type: {{event.type}} | Timestamp: {{event.timestamp | date:'medium'}} | Coordinates: ({{($any(event)).x}}, {{$any(event).y}})
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div *ngSwitchCase="'keypress'">
-                            Keypress Event: {{($any(event)).keys}}
+                            <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                                Event Type: {{event.type}} | Timestamp: {{event.timestamp | date:'medium'}} | Keys: {{($any(event)).keys}}
+                            </div>
                         </div>
                         <div *ngSwitchCase="'area-select'">
                             Area Select Event: ({{($any(event)).left}}, {{($any(event)).top}}) to ({{($any(event)).right}}, {{($any(event)).bottom}})

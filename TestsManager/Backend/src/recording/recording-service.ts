@@ -44,8 +44,7 @@ export class RecordingService {
     }
 
     public registerKeypressEvent(guid: string, key: string): void {
-        // Assuming RecordingSession has a registerKeypressEvent method
-        // this.sessions.get(guid)?.registerKeypressEvent(key);
+        this.sessions.get(guid)?.registerKeypressEvent(key);
     }
 
     public registerAreaSelectEvent(guid: string, top: number, bottom: number, left: number, right: number, areaSelectViewStream: Buffer): void {

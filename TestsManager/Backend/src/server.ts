@@ -90,6 +90,12 @@ app.post('/recording/events/click', upload.single('clickview'), async (req: Requ
   }
 });
 
+app.get('/recording/events/keypress', async (req: Request, res: Response) => {
+    const { guid, key } = req.query;
+    recordingService.registerKeypressEvent(guid as string, key as string);
+    res.status(200).send('Keypress event registered successfully.');
+});
+
 app.get('/repository', async (req: Request, res: Response) => {
     const { name, directory, description } = req.query;
 
