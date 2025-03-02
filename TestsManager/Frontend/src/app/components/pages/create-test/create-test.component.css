@@ -11,3 +11,60 @@
     padding-bottom: 1px;
     display: inline-block;
 }
+
+.image-preview-container {
+    position: relative;
+    display: inline-block;
+}
+
+.gallery-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+}
+
+.hover-preview {
+    position: absolute;
+    z-index: 100;
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    padding: 12px;
+    display: none;
+    max-width: 400px;
+    /* Initial position - will be overridden by JavaScript */
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    pointer-events: none; /* Prevent hover preview from blocking mouse events */
+}
+
+.image-preview-container:hover .hover-preview {
+    display: block;
+}
+
+.preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.preview-grid img:first-child {
+    grid-column: 1 / span 2;
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+}
+
+.preview-grid img {
+    width: 100%;
+    max-height: 140px;
+    object-fit: contain;
+}
+
+.hover-preview img {
+    max-width: 100%;
+    max-height: 250px;
+    object-fit: contain;
+}

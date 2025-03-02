@@ -23,7 +23,34 @@ document.addEventListener('click', function(event)
     });
 
     console.log('tests-recorder-click-event sent to processing script');
-});
+}, true);
+
+document.addEventListener('mousedown', function(event)
+{
+    const dpr = window.devicePixelRatio || 1;
+
+    chrome.runtime.sendMessage(
+    {
+        action: "tests-recorder-mousedown-event",
+        window:
+        {
+            width: parseInt(window.innerWidth * dpr),
+            height: parseInt(window.innerHeight * dpr)
+        },
+        position:
+        {
+            x: parseInt(event.pageX * dpr),
+            y: parseInt(event.pageY * dpr)
+        },
+        scroll:
+        {
+            x: parseInt(window.scrollX * dpr),
+            y: parseInt(window.scrollY * dpr)
+        }
+    });
+    
+    console.log('tests-recorder-mousedown-event sent to processing script');
+}, true);
 
 document.addEventListener('keypress', function(event)
 {

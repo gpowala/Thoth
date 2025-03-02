@@ -55,7 +55,9 @@ app.get('/recording/session/stop', (req: Request, res: Response) => {
 
 app.get('/recording/session/is-active', (req: Request, res: Response) => {
     const { guid } = req.query;
-    res.json({ isActive: recordingService.isActive(guid as string) });
+    const isActive = recordingService.isActive(guid as string);
+    console.log(`Session ${guid} is ${isActive ? 'active' : 'inactive'}`);
+    res.json({ isActive: isActive });
 });
 
 app.get('/recording/events', (req: Request, res: Response) => {

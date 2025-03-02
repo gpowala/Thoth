@@ -34,6 +34,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
         {    
             recordClickEvent(sender, message.window, message.position, message.scroll);
         }
+
+        if (message.action === "tests-recorder-mousedown-event")
+        {
+            recordMousedownEvent(sender, message.window, message.position, message.scroll, message.target);
+        }
     
         if (message.action === "tests-recorder-area-select-event")
         {    
@@ -135,6 +140,11 @@ var recordClickEvent = (sender, window, position, scroll) =>
             .catch((error) => console.error('Error upon click event recording: ', error));
         }
     });
+}
+
+var recordMousedownEvent = (sender, window, position, scroll, target) =>
+{
+    
 }
 
 var recordAreaSelectEvent = (sender, top, bottom, left, right) =>
