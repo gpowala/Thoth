@@ -5,6 +5,28 @@ let sessionId = '';
 
 let isSessionActiveInterval = null;
 
+var storeRecordingState = (serverUrl, sessionId, recordingTabId, isRecording) => {
+    chrome.storage.local.set({
+        'serverUrl': serverUrl,
+        'sessionId': sessionId,
+        'recordingTabId': recordingTabId,
+        'isRecording': isRecording
+    }, function() {
+        console.log('Recording state stored in storage');
+    });
+}
+
+var restoreRecordingState = () => {
+    chrome.storage.local.get(['serverUrl', 'sessionId', 'recordingTabId', 'isRecording'], function(result) {
+        serverUrl = result.serverUrl;
+        sessionId = result.sessionId;
+        recordingTabId = result.recordingTabId;
+        isRecording = result.isRecording;
+        
+        console.log('Restored recording session from storage');
+    });
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
 {
     if (message.action === "tests-recorder-start-recording")
@@ -16,11 +38,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
         sessionId = url.searchParams.get('guid');
 
         startRecording();
+        storeRecordingState(serverUrl, sessionId, true);
     }
 
     if (message.action === "tests-recorder-stop-recording")
     {
         stopRecording();
+        storeRecordingState('', '', -1, false);
 
         recordingTabId = -1;
 
@@ -144,7 +168,25 @@ var recordClickEvent = (sender, window, position, scroll) =>
 
 var recordMousedownEvent = (sender, window, position, scroll, target) =>
 {
-    
+    // Process mousedown events the same way as click events
+    var recordMousedownEventEndpointUrl = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${position.x}&y=${position.y}`;
+
+    chrome.tabs.captureVisibleTab(sender.tab.windowId, {format: "png"}, (clickView) =>
+    {
+        if (chrome.runtime.lastError)
+        {
+            console.error("Error upon capturing tab on mousedown:", chrome.runtime.lastError.message);
+        }
+        else
+        {
+            const formData = new FormData();
+            formData.append('clickview', viewToBlob(clickView), 'clickview.png');
+
+            fetch(recordMousedownEventEndpointUrl, { method: 'POST', body: formData})
+            .then(console.log('Mousedown event recorded.'))
+            .catch((error) => console.error('Error upon mousedown event recording: ', error));
+        }
+    });
 }
 
 var recordAreaSelectEvent = (sender, top, bottom, left, right) =>

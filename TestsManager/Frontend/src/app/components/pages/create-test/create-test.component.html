@@ -47,23 +47,27 @@
                 <div style="font-size: 0.8em; font-weight: normal;">
                     <div [ngSwitch]="event.type">
                         <div *ngSwitchCase="'click'">
-                            <div style="display: flex; align-items: center; gap: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <div style="flex: 1;">
+                                    <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                                        Event Type: {{event.type}} | Timestamp: {{event.timestamp | date:'medium'}} | Coordinates: ({{($any(event)).x}}, {{$any(event).y}})
+                                    </div>
+                                </div>
                                 <div class="image-preview-container" data-event-type="click">
-                                    <button mat-flat-button color="primary" class="gallery-button" (click)="openGallery($any(event))">
-                                        <mat-icon>photo_library</mat-icon>
+                                    <button mat-button (click)="openGallery($any(event))" class="gallery-button">
+                                        <mat-icon style="vertical-align: text-top; margin-right: 8px;">photo_library</mat-icon>
                                         View Screenshots
                                     </button>
+                                    <!-- <button mat-flat-button color="primary" class="gallery-button" (click)="openGallery($any(event))">
+                                        <mat-icon>photo_library</mat-icon>
+                                        View Screenshots
+                                    </button> -->
                                     <div class="hover-preview">
                                         <div class="preview-grid">
                                             <img [src]="'data:image/png;base64,' + ($any(event)).fullClickViewBase64" alt="Full View">
                                             <img [src]="'data:image/png;base64,' + ($any(event)).maxTrimmedClickViewBase64" alt="Max Trimmed">
                                             <img [src]="'data:image/png;base64,' + ($any(event)).minTrimmedClickViewBase64" alt="Min Trimmed">
                                         </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                                        Event Type: {{event.type}} | Timestamp: {{event.timestamp | date:'medium'}} | Coordinates: ({{($any(event)).x}}, {{$any(event).y}})
                                     </div>
                                 </div>
                             </div>

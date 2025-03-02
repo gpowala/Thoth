@@ -1,5 +1,17 @@
+let pendingMousedownEvent = null;
+let mousedownProcessingTimer = null;
+const CLICK_PRIORITY_DELAY = 350;
+
+// Click event listener - has priority
 document.addEventListener('click', function(event)
 {
+    // Clear any pending mousedown event
+    if (mousedownProcessingTimer) {
+        clearTimeout(mousedownProcessingTimer);
+        mousedownProcessingTimer = null;
+        pendingMousedownEvent = null;
+    }
+    
     const dpr = window.devicePixelRatio || 1; // Device Pixel Ratio
 
     chrome.runtime.sendMessage(
@@ -19,18 +31,23 @@ document.addEventListener('click', function(event)
         {
             x: parseInt(window.scrollX * dpr),
             y: parseInt(window.scrollY * dpr)
+        },
+        target: {
+            tagName: event.target.tagName,
+            id: event.target.id,
+            className: event.target.className
         }
     });
 
-    console.log('tests-recorder-click-event sent to processing script');
+    console.log('tests-recorder-click-event sent to processing script', event.target);
 }, true);
 
+// Mousedown event listener - used as fallback
 document.addEventListener('mousedown', function(event)
 {
+    // Store the event data
     const dpr = window.devicePixelRatio || 1;
-
-    chrome.runtime.sendMessage(
-    {
+    pendingMousedownEvent = {
         action: "tests-recorder-mousedown-event",
         window:
         {
@@ -46,10 +63,27 @@ document.addEventListener('mousedown', function(event)
         {
             x: parseInt(window.scrollX * dpr),
             y: parseInt(window.scrollY * dpr)
+        },
+        target: {
+            tagName: event.target.tagName,
+            id: event.target.id,
+            className: event.target.className
         }
-    });
+    };
     
-    console.log('tests-recorder-mousedown-event sent to processing script');
+    // Set a timer to process the mousedown event only if no click event occurs
+    if (mousedownProcessingTimer) {
+        clearTimeout(mousedownProcessingTimer);
+    }
+    
+    mousedownProcessingTimer = setTimeout(() => {
+        if (pendingMousedownEvent) {
+            chrome.runtime.sendMessage(pendingMousedownEvent);
+            console.log('tests-recorder-mousedown-event sent to processing script (as fallback)', event.target);
+            pendingMousedownEvent = null;
+        }
+        mousedownProcessingTimer = null;
+    }, CLICK_PRIORITY_DELAY);
 }, true);
 
 document.addEventListener('keypress', function(event)
