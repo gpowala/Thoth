@@ -1,17 +1,3 @@
-.container {
-    padding: 20px;
-}
-
-.container h2 {
-    color: #3f51b5;
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 0;
-    letter-spacing: 1px;
-    padding-bottom: 1px;
-    display: inline-block;
-}
-
 * {
     box-sizing: border-box;
     margin: 0;
@@ -167,7 +153,7 @@ h1 {
     justify-content: center;
     color: white;
     font-size: 20px;
-    /* font-weight: bold; */
+    font-weight: bold;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.3s ease, transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
@@ -203,7 +189,7 @@ h1 {
 
 .step-card:hover .add-step-button {
     opacity: 1;
-    
+    animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
@@ -220,8 +206,8 @@ h1 {
 
 .add-step-button:hover {
     background-color: #2980b9;
-    /* transform: translateY(-50%) scale(1.1); */
-    animation: pulse 1.5s infinite;
+    transform: translateY(-50%) scale(1.1);
+    animation: none;
     box-shadow: 0 0 8px rgba(52, 152, 219, 0.8);
 }
 
@@ -407,5 +393,3 @@ h1 {
         margin-top: 8px;
     }
 }
-
-

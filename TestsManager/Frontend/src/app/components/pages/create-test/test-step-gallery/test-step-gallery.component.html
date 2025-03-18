@@ -1,0 +1,30 @@
+<div class="step-card">
+    <div class="add-step-button left"><span>+</span></div>
+    <div class="add-step-button right"><span>+</span></div>
+    <div class="step-header">
+        <div class="step-title">
+            <span class="step-number">{{ data.index }}</span>
+            {{ data.title }}
+        </div>
+        <span class="step-status status-passed"></span>
+    </div>
+    <div class="step-content">
+        <p class="step-description">{{ data.description }}</p>
+        <div class="screenshots-grid">
+            <div class="screenshot" *ngFor="let image of data.images">
+                <img [src]="image.src" [alt]="data.title">
+                <div class="screenshot-label" 
+                     [ngClass]="{
+                        'label-full': image.type === 'FULL',
+                        'label-medium': image.type === 'CROPPED',
+                        'label-focused': image.type === 'FOCUSED'
+                     }">
+                    {{ image.type }}
+                </div>
+            </div>
+        </div>
+        <div *ngIf="data.details" class="step-details">
+            {{ data.details }}
+        </div>
+    </div>
+</div>

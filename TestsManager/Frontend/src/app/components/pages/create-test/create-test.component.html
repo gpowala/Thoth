@@ -1,52 +1,10 @@
 <div class="container">
-    <!-- <div style="font-size: 1.2em; font-weight: bold; color: #3f51b5;">create test</div>
-    <div style="font-size: 0.8em; font-weight: normal;">setup and record a new test</div> -->
-
-    <!-- <mat-card style="margin-top: 20px; margin-bottom: 10px;" appearance="outlined" class="mat-elevation-z8">
-        <mat-card-content>
-            <div style="margin-bottom: 10px;">
-                <div style="font-size: 0.8em; font-weight: normal;">1. Provide test details for a new recording session.</div>
-            </div>
-            <div style="margin-bottom: -10px; display: flex; justify-content: space-between;">
-                <mat-form-field style="width: 39%;">
-                    <mat-label>repository</mat-label>
-                    <mat-select>
-                        <mat-option *ngFor="let repo of repositories" [value]="repo.id">
-                            {{repo.name}}
-                        </mat-option>
-                    </mat-select>
-                </mat-form-field>
-                <mat-form-field style="width: 59%;">
-                    <mat-label>test name</mat-label><input matInput #nameInput>
-                </mat-form-field>
-            </div>
-            <div style="margin-bottom: -15px;">
-                <mat-form-field style="width: 100%;">
-                    <mat-label>description</mat-label><input matInput #descriptionInput>
-                </mat-form-field>
-            </div>
-        </mat-card-content>
-    </mat-card> -->
-    <!-- <mat-card appearance="outlined">
-        <mat-card-content>
-            <div style="font-size: 0.8em; font-weight: normal;">
-                <b>Thot > </b>Do you want to create a new test recording session? <button mat-flat-button style="background-color: #3f51b5; color: white; margin-left: 5px; font-size: 0.9em; padding: 0px 0px;" (click)="createRecordingSession()">create</button>
-            </div>
-        </mat-card-content>
-    </mat-card> -->
-    <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;">
+    <!-- <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;">
         <div style="font-size: 0.8em; font-weight: normal; text-align: center;">
             Do you want to create a new test recording session?<br>
             <button mat-flat-button style="background-color: #3f51b5; color: white; " (click)="createRecordingSession()">create session</button>
         </div>
     </div>
-    <!-- <mat-card style="margin-top: 20px; margin-bottom: 10px;" appearance="outlined" class="mat-elevation-z8" *ngIf="status != TestCreationStatus.DEFINING_TEST">
-        <mat-card-content>
-            <div>
-                <div style="font-size: 0.8em; font-weight: normal;">2. Use following URL in browser recorder extension to connect to new active session: {{session.url}}</div>
-            </div>
-        </mat-card-content>
-    </mat-card> -->
     <mat-card *ngFor="let event of events; trackBy: trackByFn" style="margin-top: 20px; margin-bottom: 10px;" appearance="outlined" class="mat-elevation-z8">
         <mat-card-content>
             <div>
@@ -64,10 +22,6 @@
                                         <mat-icon style="vertical-align: text-top; margin-right: 8px;">photo_library</mat-icon>
                                         View Screenshots
                                     </button>
-                                    <!-- <button mat-flat-button color="primary" class="gallery-button" (click)="openGallery($any(event))">
-                                        <mat-icon>photo_library</mat-icon>
-                                        View Screenshots
-                                    </button> -->
                                     <div class="hover-preview">
                                         <div class="preview-grid">
                                             <img [src]="'data:image/png;base64,' + ($any(event)).fullClickViewBase64" alt="Full View">
@@ -103,31 +57,155 @@
                 </div>
             </div>
         </mat-card-content>
-    </mat-card>
-    <!-- <div *ngIf="status != TestCreationStatus.SESSION_STARTED"> -->
-        <!-- <mat-card *ngFor="let event of events" style="margin-top: 20px; margin-bottom: 10px;" appearance="outlined" class="mat-elevation-z8">
-            <mat-card-content>
-                <div>
-                    <div style="font-size: 0.8em; font-weight: normal;">
-                        <div [ngSwitch]="true">
-                            <div *ngSwitchCase="event instanceof ClickEvent">
-                                Click Event at ({{($any(event)).x}}, {{$any(event).y}})
-                                <img [src]="'data:image/png;base64,' + ($any(event)).clickViewBase64" style="max-width: 100%; margin-top: 10px;">
-                            </div>
-                            <div *ngSwitchCase="event instanceof KeypressEvent">
-                                Keypress Event: {{event.keys}}
-                            </div>
-                            <div *ngSwitchCase="event instanceof AreaSelectEvent">
-                                Area Select Event: ({{event.left}}, {{event.top}}) to ({{event.right}}, {{event.bottom}})
-                                <img [src]="'data:image/png;base64,' + event.areaSelectViewBase64" style="max-width: 100%; margin-top: 10px;">
-                            </div> -->
-                        <!-- </div>
-                        <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                            Timestamp: {{event.timestamp | date:'medium'}}
+    </mat-card> -->
+
+
+    <h1>Test Execution Results</h1>
+        
+    <div class="controls">
+        <button class="filter-button active">All Steps</button>
+        <button class="filter-button">Failed Only</button>
+        <button class="filter-button">Passed Only</button>
+        <button class="filter-button">Skipped Only</button>
+    </div>
+    
+    <!-- Login Flow Sequence -->
+    <div class="test-sequence">
+        <div class="sequence-header">
+            <div class="sequence-title">Login Flow
+                <div class="edit-title-button" title="Edit title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="sequence-stats">
+                <span class="stat stat-passed">3 Passed</span>
+                <span class="stat stat-failed">1 Failed</span>
+                <span class="stat stat-skipped">0 Skipped</span>
+            </div>
+        </div>
+        
+        <div class="steps-container">
+            <!-- Step 1 -->
+            <div class="step-card">
+                <div class="add-step-button left"><span>+</span></div>
+                <div class="add-step-button right"><span>+</span></div>
+                <div class="step-header">
+                    <div class="step-title">
+                        <span class="step-number">1</span>
+                        Login Form
+                    </div>
+                    <span class="step-status status-passed"></span>
+                </div>
+                <div class="step-content">
+                    <p class="step-description">Verify login form displays correctly</p>
+                    <div class="screenshots-grid">
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Login Screen">
+                            <div class="screenshot-label label-full">Full</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Validation">
+                            <div class="screenshot-label label-medium">Medium</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Submit">
+                            <div class="screenshot-label label-focused">Focused</div>
                         </div>
                     </div>
                 </div>
-            </mat-card-content>
-        </mat-card> -->
-    <!-- </div> -->
+            </div>
+            
+            <!-- Step 2 -->
+            <div class="step-card">
+                <div class="add-step-button left"><span>+</span></div>
+                <div class="add-step-button right"><span>+</span></div>
+                <div class="step-header">
+                    <div class="step-title">
+                        <span class="step-number">2</span>
+                        Credentials
+                    </div>
+                    <span class="step-status status-passed"></span>
+                </div>
+                <div class="step-content">
+                    <p class="step-description">Verify user can enter valid credentials</p>
+                    <div class="screenshots-grid">
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Username">
+                            <div class="screenshot-label label-full">Full</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Password">
+                            <div class="screenshot-label label-medium">Medium</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Remember Me">
+                            <div class="screenshot-label label-focused">Focused</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3 -->
+            <div class="step-card">
+                <div class="add-step-button left"><span>+</span></div>
+                <div class="add-step-button right"><span>+</span></div>
+                <div class="step-header">
+                    <div class="step-title">
+                        <span class="step-number">3</span>
+                        Authentication
+                    </div>
+                    <span class="step-status status-passed"></span>
+                </div>
+                <div class="step-content">
+                    <p class="step-description">Verify authentication completes successfully</p>
+                    <div class="screenshots-grid">
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Submit">
+                            <div class="screenshot-label label-full">Full</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Loading">
+                            <div class="screenshot-label label-medium">Medium</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Success">
+                            <div class="screenshot-label label-focused">Focused</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 4 -->
+            <div class="step-card">
+                <div class="add-step-button left"><span>+</span></div>
+                <div class="add-step-button right"><span>+</span></div>
+                <div class="step-header">
+                    <div class="step-title">
+                        <span class="step-number">4</span>
+                        Dashboard
+                    </div>
+                    <span class="step-status status-failed"></span>
+                </div>
+                <div class="step-content">
+                    <p class="step-description">Verify dashboard loads with user data</p>
+                    <div class="screenshots-grid">
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Redirect">
+                            <div class="screenshot-label label-full">Full</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Loading State">
+                            <div class="screenshot-label label-medium">Medium</div>
+                        </div>
+                        <div class="screenshot">
+                            <img src="/api/placeholder/100/75" alt="Error">
+                            <div class="screenshot-label label-focused">Focused</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
