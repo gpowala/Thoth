@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, ipcMain, dialog, BrowserWindow } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const { detectPort } = require('detect-port');
@@ -72,6 +72,8 @@ app.on('ready', async () => {
         }
     });
 
+    // mainWindow.setMenuBarVisibility(false);
+
     await mainWindow.loadURL(`http://localhost:${frontendPort}`);
     
     setTimeout(() => {
@@ -87,4 +89,11 @@ app.on('ready', async () => {
 app.on('window-all-closed', () => {
     if (backendProcess) backendProcess.kill();
     app.quit();
+});
+
+ipcMain.handle('FRONTEND_SELECT_DIRECTORY', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openDirectory']
+    });
+    return result.canceled ? null : result.filePaths[0];
 });

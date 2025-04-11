@@ -6,6 +6,9 @@ import { HttpContext } from './utils/http-context';
 import { RecordingService } from './recording/recording-service';
 import { RecordingSession } from './recording/recording-session';
 import { Repository } from './database/context';
+const simpleGit = require('simple-git');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const port = Number(process.argv[2]) || 3000; // Read port from Electron
@@ -98,21 +101,90 @@ app.get('/recording/events/keypress', async (req: Request, res: Response) => {
     res.status(200).send('Keypress event registered successfully.');
 });
 
-app.get('/repository', async (req: Request, res: Response) => {
-    const { name, directory, description } = req.query;
+const requireRepositoryExists = (repository: Repository) => {
+    if (repository == null)
+        throw Error('Repository does not exist');
+}
 
-    if (!name || !directory) {
-        return res.status(400).json({ error: 'Name and directory are required fields' });
+const cloneGitRepository = async (repository: Repository) => {
+    try {
+        if (!fs.existsSync(repository.directory)) {
+            fs.mkdirSync(repository.directory, { recursive: true });
+        }
+        
+        const remoteUrl = repository.url.replace(
+            'https://', 
+            `https://${repository.user}:${repository.token}@`
+        );
+        
+        const git = simpleGit(repository.directory);
+        if (fs.existsSync(path.join(repository.directory, '.git'))) {
+            await git.pull('origin', 'main');
+        } else {
+            await git.clone(remoteUrl, repository.directory);
+        }
+    } catch (error) {
+        console.error(`Error cloning repository: ${error}`);
+        throw error;
+    }
+}
+
+const initializeThotRepository = async (repository: Repository) => {
+    try {
+        const thotDirectory = path.join(repository.directory, 'thot');
+
+        const scriptsDirectory = path.join(thotDirectory, 'scripts');
+        const testsDirectory = path.join(thotDirectory, 'tests');
+        const environmentsDirectory = path.join(thotDirectory, 'environments');
+
+        const testsFile = path.join(thotDirectory, 'tests.thot');
+        const testsFileContent = '{"scriptsDir": "scripts", "testsDir": "tests", "environmentsDir": "environments"}';
+
+        if (!fs.existsSync(thotDirectory)) {
+            fs.mkdirSync(thotDirectory, { recursive: true });
+
+            fs.writeFileSync(testsFile, testsFileContent);
+            
+            fs.mkdirSync(scriptsDirectory, { recursive: true });
+            fs.mkdirSync(testsDirectory, { recursive: true });
+            fs.mkdirSync(environmentsDirectory, { recursive: true });
+
+            console.log('Tests environment created successfully.');
+        } else {
+            console.log('Tests environment already exists, skipping creation.');
+        }
+    } catch (error) {
+        console.error('Error initializing repository:', error);
+        throw error;
+    }
+
+}
+
+app.get('/repository', async (req: Request, res: Response) => {
+    const { name, url, user, token, directory } = req.query;
+
+    if (!name || !url || !user || !token || !directory) {
+        return res.status(400).json({ error: 'Name, URL, user, token, and directory are required fields' });
     }
 
     try {
-        const newRepository = await Repository.create({
-            name: name as string,
-            directory: directory as string,
-            description: description as string | undefined
-        });
+        let repository = await Repository.findOne({ where: { Name: name } });
+        if (!repository) {
+            repository = await Repository.create({
+                name: name as string,
+                url: url as string,
+                user: user as string,
+                token: token as string,
+                directory: directory as string
+            });
+        }
 
-        res.status(201).json(newRepository);
+        requireRepositoryExists(repository);
+        await cloneGitRepository(repository);
+
+        initializeThotRepository(repository);
+        
+        res.status(201).json(repository);
     } catch (error) {
         console.error('Error creating repository:', error);
         res.status(500).json({ error: 'An error occurred while creating the repository' });

@@ -12,6 +12,16 @@
     display: inline-block;
 }
 
+.repositories-header {
+  margin-bottom: 5px;
+  font-size: x-large;
+  color: rgb(70,78,178);
+
+  text-decoration: underline;
+  text-decoration-color: rgb(255,75,130);
+  text-decoration-thickness: 3px;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -22,13 +32,13 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #333;
     background-color: #f0f2f5;
-    padding: 20px;
+    /* padding: 20px; */
 }
 
-.container {
+/* .container {
     max-width: 1400px;
     margin: 0 auto;
-}
+} */
 
 h1 {
     text-align: center;
@@ -160,7 +170,7 @@ h1 {
     position: absolute;
     width: 28px;
     height: 28px;
-    background-color: #3498db;
+    background-color: #3f51b5;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -203,7 +213,7 @@ h1 {
 
 .step-card:hover .add-step-button {
     opacity: 1;
-    
+
 }
 
 @keyframes pulse {
@@ -219,7 +229,7 @@ h1 {
 }
 
 .add-step-button:hover {
-    background-color: #2980b9;
+    background-color: #3f51b5;
     /* transform: translateY(-50%) scale(1.1); */
     animation: pulse 1.5s infinite;
     box-shadow: 0 0 8px rgba(52, 152, 219, 0.8);
@@ -272,7 +282,7 @@ h1 {
     justify-content: center;
     width: 22px;
     height: 22px;
-    background: #3498db;
+    background: #3f51b5;
     color: white;
     border-radius: 50%;
     margin-right: 8px;
@@ -387,9 +397,9 @@ h1 {
 }
 
 .filter-button.active {
-    background: #3498db;
+    background: #3f51b5;
     color: white;
-    border-color: #3498db;
+    border-color: #3f51b5;
 }
 
 /* Mobile responsiveness */
@@ -397,15 +407,33 @@ h1 {
     .steps-container {
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
-    
+
     .sequence-header {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .sequence-stats {
         margin-top: 8px;
     }
 }
 
+.mat-mdc-button {
+  min-width: 0px !important;
+}
 
+button[mat-raised-button] {
+  height: 36px;
+  padding: 0 16px;
+  align-self: flex-end;
+
+  color: #005cbb;
+  background-color: #c4d7ff;
+  box-shadow: none !important;
+
+  border-radius: 10px;
+}
+
+button[mat-raised-button]:active {
+  box-shadow: none !important;
+}

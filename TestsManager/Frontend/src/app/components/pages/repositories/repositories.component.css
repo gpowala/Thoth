@@ -11,3 +11,125 @@
     padding-bottom: 1px;
     display: inline-block;
 }
+
+.main-fab-button {
+  color: #005cbb;
+  background-color: #c4d7ff;;
+  box-shadow: none !important;
+
+  height: 36px;
+  align-self: flex-end;
+  box-shadow: none;
+}
+
+.repositories-header {
+  margin-bottom: 5px;
+  font-size: x-large;
+  color: rgb(70,78,178);
+
+  text-decoration: underline;
+  text-decoration-color: rgb(255,75,130);
+  text-decoration-thickness: 3px;
+}
+
+.add-repository-form {
+  margin-top: 20px;
+}
+
+.form-fields-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: nowrap;
+  margin: 10px 0 10px 0;
+}
+
+.form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-field label {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 2px;
+  padding-left: 4px;
+}
+
+.form-field input {
+  height: 36px;
+  width: 100%;
+  padding: 0 12px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.repositories-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 40px;
+}
+
+.table-header {
+  font-size: 11px;
+  /* color: #666; */
+  font-weight: normal;
+  white-space: nowrap;
+  padding: 5px;
+  text-align: center;
+  font-size: smaller;
+}
+
+.table-header-id {
+  font-size: 11px;
+  /* color: #666; */
+  font-weight: normal;
+  white-space: nowrap;
+  padding: 5px;
+  font-size: smaller;
+  width: 1%;
+  text-align: left;
+}
+
+.mat-mdc-button {
+  min-width: 0px !important;
+}
+
+button[mat-raised-button] {
+  height: 36px;
+  padding: 0 16px;
+  align-self: flex-end;
+
+  color: #005cbb;
+  background-color: #c4d7ff;
+  box-shadow: none !important;
+
+  border-radius: 10px;
+}
+
+button[mat-raised-button]:active {
+  box-shadow: none !important;
+}
+
+.mat-mdc-button>.mat-icon {
+  margin-right: 0;
+}
+
+.blocking-spinner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column; /* Added to align children vertically */
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+

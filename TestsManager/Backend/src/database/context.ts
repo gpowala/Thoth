@@ -14,11 +14,16 @@ const sequelize = new Sequelize({
 // Define the Repositories model
 import { DataTypes, Model } from 'sequelize';
 
+
+
 class Repository extends Model {
   public id!: number;
   public name!: string;
   public directory!: string;
   public description!: string;
+  public url!: string;
+  public user!: string;
+  public token!: string;
 }
 
 Repository.init({
@@ -31,13 +36,21 @@ Repository.init({
     type: DataTypes.STRING,
     allowNull: false,
   },
-  directory: {
+  url: {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  description: {
-    type: DataTypes.TEXT,
-    allowNull: true,
+  user: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  token: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  directory: {
+    type: DataTypes.STRING,
+    allowNull: false,
   },
 }, {
   sequelize,
@@ -47,9 +60,6 @@ Repository.init({
 
 // Sync the model with the database
 sequelize.sync();
-
-export { Repository };
-
 
 // Test the connection
 async function testConnection() {
@@ -68,4 +78,4 @@ export async function initDatabase() {
   // such as syncing models or running migrations
 }
 
-export { sequelize };
+export { sequelize, Repository };

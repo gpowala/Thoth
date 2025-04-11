@@ -21,7 +21,7 @@ import { ImageGalleryComponent } from './image-gallery/image-gallery.component';
 
 
 export enum TestCreationStatus {
-  DEFINING_TEST = 'DEFINING_TEST',
+  SESSION_SETUP = 'SESSION_SETUP',
   SESSION_CREATED = 'SESSION_CREATED',
   SESSION_STARTED = 'SESSION_STARTED',
   SESSION_STOPPED = 'SESSION_STOPPED'
@@ -31,11 +31,11 @@ export enum TestCreationStatus {
   selector: 'app-create-test',
   standalone: true,
   imports: [
-    CommonModule, 
-    MatFormFieldModule, 
-    MatInputModule, 
-    MatButtonModule, 
-    MatCardModule, 
+    CommonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatCardModule,
     MatSelectModule,
     MatIconModule,
     MatDialogModule
@@ -45,8 +45,8 @@ export enum TestCreationStatus {
 })
 export class CreateTestComponent implements AfterViewInit, OnDestroy {
   TestCreationStatus = TestCreationStatus;
-  status: TestCreationStatus = TestCreationStatus.DEFINING_TEST;
-  
+  status: TestCreationStatus = TestCreationStatus.SESSION_SETUP;
+
   session: Session = new Session();
   events: IEvent[] = [];
 
@@ -95,12 +95,12 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
                   throw new Error(`Unknown event type: ${event.type}`);
               }
             });
-            
+
             mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
-            
+
             const processedEvents: IEvent[] = [];
             let currentKeypressGroup: KeypressEvent[] = [];
-            
+
             mappedEvents.forEach((event) => {
               if (event instanceof KeypressEvent) {
                 currentKeypressGroup.push(event);
@@ -112,11 +112,11 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
                 processedEvents.push(event);
               }
             });
-            
+
             if (currentKeypressGroup.length > 0) {
               processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
             }
-            
+
             this.events = processedEvents;
             this.cdr.detectChanges();
           }
@@ -180,7 +180,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
 
   private setupPreviewContainers() {
     const previewContainers = document.querySelectorAll('.image-preview-container');
-    
+
     previewContainers.forEach(container => {
       // Observe each container for size changes
       if (this.resizeObserver) {
@@ -189,11 +189,11 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
 
       const button = container.querySelector('.gallery-button') as HTMLElement;
       const preview = container.querySelector('.hover-preview') as HTMLElement;
-      
+
       if (button && preview) {
         // We don't need to clone the button anymore as it breaks Angular event binding
         // Instead, just add our positioning logic
-        
+
         // Add mouseenter event to position the preview
         container.addEventListener('mouseenter', () => {
           this.positionPreview(container as HTMLElement, preview);
@@ -207,7 +207,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
 
   private updateAllPreviewPositions() {
     const previewContainers = document.querySelectorAll('.image-preview-container');
-    
+
     previewContainers.forEach(container => {
       const preview = container.querySelector('.hover-preview') as HTMLElement;
       if (preview) {
@@ -220,7 +220,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     // Get container position
     const containerRect = container.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    
+
     // Calculate preview height without making it visible
     // Clone the preview to measure it without affecting the display
     const previewClone = preview.cloneNode(true) as HTMLElement;
@@ -229,17 +229,17 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     previewClone.style.position = 'absolute';
     previewClone.style.pointerEvents = 'none';
     document.body.appendChild(previewClone);
-    
+
     // Get preview height from the clone
     const previewHeight = previewClone.offsetHeight;
-    
+
     // Remove the clone
     document.body.removeChild(previewClone);
-    
+
     // Check if there's enough space below
     const spaceBelow = viewportHeight - containerRect.bottom;
     const spaceAbove = containerRect.top;
-    
+
     if (spaceBelow < previewHeight && spaceAbove > spaceBelow) {
       // Not enough space below and more space above, show above
       this.renderer.setStyle(preview, 'bottom', '100%');
@@ -284,7 +284,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     if (keypressEvents.length === 0) {
       throw new Error('Cannot merge empty keypress events array');
     }
-    
+
     if (keypressEvents.length === 1) {
       return keypressEvents[0];
     }
@@ -294,7 +294,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     const combinedKeys = keypressEvents.reduce((allKeys, event) => {
       return allKeys.concat(event.keys);
     }, [] as string[]);
-    
+
     return new KeypressEvent(
       lastEvent.id,
       lastEvent.timestamp,
@@ -308,17 +308,17 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
       height: '80%',
       data: {
         images: [
-          { 
-            src: 'data:image/png;base64,' + event.fullClickViewBase64, 
-            title: 'Full View' 
+          {
+            src: 'data:image/png;base64,' + event.fullClickViewBase64,
+            title: 'Full View'
           },
-          { 
-            src: 'data:image/png;base64,' + event.maxTrimmedClickViewBase64, 
-            title: 'Max Trimmed View' 
+          {
+            src: 'data:image/png;base64,' + event.maxTrimmedClickViewBase64,
+            title: 'Max Trimmed View'
           },
-          { 
-            src: 'data:image/png;base64,' + event.minTrimmedClickViewBase64, 
-            title: 'Min Trimmed View' 
+          {
+            src: 'data:image/png;base64,' + event.minTrimmedClickViewBase64,
+            title: 'Min Trimmed View'
           }
         ]
       }
@@ -331,9 +331,9 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
       height: '80%',
       data: {
         images: [
-          { 
-            src: 'data:image/png;base64,' + event.areaSelectViewBase64, 
-            title: 'Area Selection' 
+          {
+            src: 'data:image/png;base64,' + event.areaSelectViewBase64,
+            title: 'Area Selection'
           }
         ]
       }

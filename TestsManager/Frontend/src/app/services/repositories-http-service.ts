@@ -15,8 +15,10 @@ export class RepositoriesHttpService {
     return this.http.get<Repository>(`${this.configurationProviderService.backendApiBaseUrl}/repository`, {
         params: {
             name: encodeURIComponent(repository.name),
+            url: encodeURIComponent(repository.url),
+            user: encodeURIComponent(repository.user),
+            token: encodeURIComponent(repository.token),
             directory: encodeURIComponent(repository.directory),
-            description: encodeURIComponent(repository.description),
         }
     });
   }

@@ -22,22 +22,20 @@
 <button mat-button [routerLink]="['/manage-tests']" class="main-nav-button">manage tests</button> -->
 <div style="height: calc(100vh - 160px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3f51b5 #c4d7ff; margin-top: 10px;">
   <div style="padding-right: 8px;">
-    <mat-tree #tree [dataSource]="dataSource" [childrenAccessor]="childrenAccessor" style="background-color: #c4d7ff; color: #3f51b5;">
-  <!-- This is the tree node template for leaf nodes -->
+    <!-- <mat-tree #tree [dataSource]="dataSource" [childrenAccessor]="childrenAccessor" style="background-color: #c4d7ff; color: #3f51b5;">
       <mat-tree-node *matTreeNodeDef="let node" style="background-color: #c4d7ff; color: #3f51b5; min-height: 0 !important;">
         <button mat-button class="main-nav-button">
           <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">arrow_right</mat-icon>
           {{node.name}}
         </button>
       </mat-tree-node>
-      <!-- This is the tree node template for expandable nodes -->
       <mat-tree-node *matTreeNodeDef="let node;when: hasChild" matTreeNodePadding matTreeNodeToggle [cdkTreeNodeTypeaheadLabel]="node.name" style="min-height: 0 !important; margin-top: 10px;">
         <button mat-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.name" class="main-nav-button">
           <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">{{tree.isExpanded(node) ? 'expand_more' : 'chevron_right'}}</mat-icon>
           {{node.name}}
         </button>
       </mat-tree-node>
-    </mat-tree>
+    </mat-tree> -->
     <!-- <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
     <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
     <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>

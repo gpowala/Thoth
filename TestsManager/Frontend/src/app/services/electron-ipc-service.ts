@@ -39,4 +39,9 @@ export class ElectronIpcService {
       });
     }
   }
+
+  async selectDirectory() {
+    if ((window as any).electronAPI)
+      return await (window as any).electronAPI.onFrontendSelectDirectory();
+  }
 }

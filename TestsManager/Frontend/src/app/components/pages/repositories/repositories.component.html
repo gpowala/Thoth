@@ -1,9 +1,73 @@
 <div class="container">
-    <div style="font-size: 1em; font-weight: bold; color: #3f51b5;">Manage repositories</div>
-    <div style="font-size: 0.7em; font-weight: normal;">list of registered repositories</div>
-    
-    <div style="width: 100%; margin-top: 20px;">
-        <!-- Header Row -->
+  <div class="blocking-spinner" *ngIf="isCloningRespotitory">
+    <div><mat-spinner></mat-spinner></div>
+    <div>Cloning repository...</div>
+  </div>
+
+  <div class="repositories-header" style="width: 100%;">Manage repositories</div>
+  <div style="font-size: 0.8em; font-weight: normal; width: 100%;">list of locally registered tests repositories</div>
+
+  <div class="repositories-content">
+    <div class="add-repository-form">
+      <div class="form-fields-container">
+          <div class="form-field">
+              <label>Repository Name</label>
+              <input type="text" [(ngModel)]="repositoryName">
+          </div>
+          <div class="form-field">
+              <label>Repository URL</label>
+              <input type="text" [(ngModel)]="repositoryUrl">
+          </div>
+          <div class="form-field">
+              <label>User</label>
+              <input type="text" [(ngModel)]="repositoryUser">
+          </div>
+          <div class="form-field">
+              <label>PAT (Token)</label>
+              <input type="password" [(ngModel)]="repositoryToken">
+          </div>
+          <div class="form-field">
+            <label>Local Directory</label>
+            <input type="text" [(ngModel)]="repositoryLocalDirectory">
+          </div>
+          <button mat-mini-fab class="main-fab-button" color="primary" (click)="browseForDirectory()"><mat-icon>folder</mat-icon></button>
+          <button mat-raised-button color="primary" (click)="registerRepository()">
+              Add Repository
+          </button>
+      </div>
+    </div>
+    <table class="repositories-table" style="width: 100%;">
+        <thead>
+            <tr>
+                <th class="table-header-id">ID</th>
+                <th class="table-header">Repository Name</th>
+                <th class="table-header">Repository URL</th>
+                <th class="table-header">User</th>
+                <th class="table-header">Local Directory</th>
+                <th class="table-header">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let repo of repositories"
+                class="repository-item"
+                (mouseover)="onMouseOver($event)"
+                (mouseout)="onMouseOut($event)" style="transition: background-color 0.3s;">
+                <td style="width: 1%; white-space: nowrap; padding: 5px; text-align: left;">{{repo.id}}</td>
+                <td style="white-space: nowrap; padding: 5px; text-align: center;">{{repo.name}}</td>
+                <td style="white-space: nowrap; padding: 5px; text-align: center;"><a href="{{repo.url}}">{{repo.url}}</a></td>
+                <td style="white-space: nowrap; padding: 5px; text-align: center;">{{repo.user}}</td>
+                <td style="white-space: nowrap; padding: 5px; text-align: center;">{{repo.directory}}</td>
+                <td style="white-space: nowrap; padding: 5px; text-align: center;">
+                  <button mat-mini-fab class="main-fab-button" color="primary" (click)="unregisterRepository(repo.id)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+  </div>
+
+    <!-- <div style="width: 100%; margin-top: 20px;">
         <div style="display: flex; font-weight: bold; font-size: 0.8em; background-color: #c4d7ff; color: #3f51b5; padding: 12px;">
             <div style="flex: 1;">Name</div>
             <div style="flex: 1;">Local directory</div>
@@ -11,7 +75,7 @@
             <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center;"></div>
         </div>
 
-        <!-- Data Rows -->
+
         <ng-container *ngFor="let repo of repositories">
             <div style="display: flex; border-bottom: 1px solid #e0e0e0; padding: 12px;">
                 <div style="flex: 1;">{{repo.name}}</div>
@@ -23,16 +87,16 @@
             </div>
         </ng-container>
 
-        <!-- Add Row -->
+
         <style>
             .hovered {
                 background-color: #c4d7ff !important;
                 cursor: pointer;
             }
         </style>
-        <div class="add-row" 
-            [ngStyle]="{'background-color': 'c4d7ff', 'color': '#3f51b5'}" 
-            (mouseover)="rowHovered=true" 
+        <div class="add-row"
+            [ngStyle]="{'background-color': 'c4d7ff', 'color': '#3f51b5'}"
+            (mouseover)="rowHovered=true"
             (mouseout)="rowHovered=false"
             [ngClass]="{'hovered': rowHovered}"
             style="display: flex; justify-content: center; align-items: center; padding: 8px;" *ngIf="!expandRow" (click)="expandRow = !expandRow">
@@ -63,5 +127,5 @@
                     </div>
                 </div>
         </div>
-    </div>
+    </div> -->
 </div>

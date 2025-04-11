@@ -1,11 +1,16 @@
 <div class="container">
-    <!-- <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;">
+  <div class="repositories-header" style="width: 100%;">Record new test</div>
+  <div style="font-size: 0.8em; font-weight: normal; width: 100%;">create session and record new test</div>
+    <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;" *ngIf="status === TestCreationStatus.SESSION_SETUP">
         <div style="font-size: 0.8em; font-weight: normal; text-align: center;">
             Do you want to create a new test recording session?<br>
-            <button mat-flat-button style="background-color: #3f51b5; color: white; " (click)="createRecordingSession()">create session</button>
+            <button mat-raised-button color="primary" (click)="createRecordingSession()">
+              Create Session
+            </button>
+            <!-- <button mat-flat-button style="background-color: #3f51b5; color: white; " (click)="createRecordingSession()">create session</button> -->
         </div>
     </div>
-    <mat-card *ngFor="let event of events; trackBy: trackByFn" style="margin-top: 20px; margin-bottom: 10px;" appearance="outlined" class="mat-elevation-z8">
+    <!-- <mat-card *ngFor="let event of events; trackBy: trackByFn" style="margin-top: 20px; margin-bottom: 10px;" appearance="outlined" class="mat-elevation-z8">
         <mat-card-content>
             <div>
                 <div style="font-size: 0.8em; font-weight: normal;">
@@ -58,17 +63,14 @@
             </div>
         </mat-card-content>
     </mat-card> -->
-
-
-    <h1>Test Execution Results</h1>
-        
+    <div style="width: 100%; margin-top: 20px;" *ngIf="status !== TestCreationStatus.SESSION_SETUP">
     <div class="controls">
         <button class="filter-button active">All Steps</button>
-        <button class="filter-button">Failed Only</button>
-        <button class="filter-button">Passed Only</button>
-        <button class="filter-button">Skipped Only</button>
+        <button class="filter-button">Recorded Only</button>
+        <button class="filter-button">Gherkin Only</button>
+        <button class="filter-button">Scripts Only</button>
     </div>
-    
+
     <!-- Login Flow Sequence -->
     <div class="test-sequence">
         <div class="sequence-header">
@@ -79,13 +81,13 @@
                     </svg>
                 </div>
             </div>
-            <div class="sequence-stats">
-                <span class="stat stat-passed">3 Passed</span>
-                <span class="stat stat-failed">1 Failed</span>
+            <!-- <div class="sequence-stats">
+                <span class="stat stat-passed">3 Recorded</span>
+                <span class="stat stat-failed">2 Manual</span>
                 <span class="stat stat-skipped">0 Skipped</span>
-            </div>
+            </div> -->
         </div>
-        
+
         <div class="steps-container">
             <!-- Step 1 -->
             <div class="step-card">
@@ -116,7 +118,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Step 2 -->
             <div class="step-card">
                 <div class="add-step-button left"><span>+</span></div>
@@ -146,7 +148,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Step 3 -->
             <div class="step-card">
                 <div class="add-step-button left"><span>+</span></div>
@@ -176,7 +178,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Step 4 -->
             <div class="step-card">
                 <div class="add-step-button left"><span>+</span></div>
@@ -207,5 +209,6 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </div>
