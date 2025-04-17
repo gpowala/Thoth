@@ -43,8 +43,16 @@ async function spawnBackend(backendPort) {
         const message = data.toString().trim();
         console.log(`Backend says: ${message}`);
 
-        if (message.startsWith("BACKEND_EVENT:") &&mainWindow) {
-            mainWindow.webContents.send('BACKEND_EVENT', message.replace("BACKEND_EVENT:", "").trim());
+        if (message.includes("BACKEND_EVENT:SESSION_STATUS_CHANGED") && mainWindow) {
+            mainWindow.webContents.send('BACKEND_EVENT', 'SESSION_STATUS_CHANGED');
+        }
+
+        if (message.includes("BACKEND_EVENT:CLICK_EVENT_REGISTERED") && mainWindow) {
+            mainWindow.webContents.send('BACKEND_EVENT', 'CLICK_EVENT_REGISTERED');
+        }
+
+        if (message.includes("BACKEND_EVENT:KEYPRESS_EVENT_REGISTERED") && mainWindow) {
+            mainWindow.webContents.send('BACKEND_EVENT', 'KEYPRESS_EVENT_REGISTERED');
         }
     });
 

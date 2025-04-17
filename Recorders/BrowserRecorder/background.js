@@ -38,7 +38,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
         sessionId = url.searchParams.get('guid');
 
         startRecording();
-        storeRecordingState(serverUrl, sessionId, true);
+        storeRecordingState(serverUrl, sessionId, recordingTabId, true);
     }
 
     if (message.action === "tests-recorder-stop-recording")
@@ -122,6 +122,9 @@ var stopRecording = () =>
 
 var isActive = () =>
 {
+    // Prevent tab from sleeping
+    chrome.tabs.update(recordingTabId, { active: true });
+    
     fetch(serverUrl + '/recording/session/is-active?guid=' + sessionId, {method: 'GET'})
     .catch((error) =>
     {

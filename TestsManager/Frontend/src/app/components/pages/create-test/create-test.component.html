@@ -1,12 +1,20 @@
 <div class="container">
-  <div class="repositories-header" style="width: 100%;">Record new test</div>
-  <div style="font-size: 0.8em; font-weight: normal; width: 100%;">create session and record new test</div>
+  <!-- <div class="repositories-header" style="width: 100%;">Record new test</div>
+  <div style="font-size: 0.8em; font-weight: normal; width: 100%;">create session and record new test</div> -->
     <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;" *ngIf="status === TestCreationStatus.SESSION_SETUP">
         <div style="font-size: 0.8em; font-weight: normal; text-align: center;">
             Do you want to create a new test recording session?<br>
             <button mat-raised-button color="primary" (click)="createRecordingSession()">
               Create Session
             </button>
+            <!-- <button mat-flat-button style="background-color: #3f51b5; color: white; " (click)="createRecordingSession()">create session</button> -->
+        </div>
+    </div>
+
+    <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;" *ngIf="status === TestCreationStatus.SESSION_CREATED">
+        <div style="font-size: 0.8em; font-weight: normal; text-align: center;">
+            Connect to session using the following link:<br>
+            <div style="display: flex; gap: 10px; align-items: center;"><input type="text" [value]="session.url" style="flex: 1;"><button mat-mini-fab class="main-fab-button" color="primary"><mat-icon>content_copy</mat-icon></button></div>
             <!-- <button mat-flat-button style="background-color: #3f51b5; color: white; " (click)="createRecordingSession()">create session</button> -->
         </div>
     </div>
@@ -63,152 +71,67 @@
             </div>
         </mat-card-content>
     </mat-card> -->
-    <div style="width: 100%; margin-top: 20px;" *ngIf="status !== TestCreationStatus.SESSION_SETUP">
-    <div class="controls">
-        <button class="filter-button active">All Steps</button>
-        <button class="filter-button">Recorded Only</button>
-        <button class="filter-button">Gherkin Only</button>
-        <button class="filter-button">Scripts Only</button>
-    </div>
+    <div style="width: 100%; margin-top: 20px;" *ngIf="status === TestCreationStatus.SESSION_STARTED || status === TestCreationStatus.SESSION_STOPPED">
+        <div class="controls">
+            <button class="filter-button active">All Steps</button>
+            <button class="filter-button">Recorded Only</button>
+            <button class="filter-button">Gherkin Only</button>
+            <button class="filter-button">Scripts Only</button>
+        </div>
 
-    <!-- Login Flow Sequence -->
-    <div class="test-sequence">
-        <div class="sequence-header">
-            <div class="sequence-title">Login Flow
-                <div class="edit-title-button" title="Edit title">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                    </svg>
+        <!-- Login Flow Sequence -->
+        <div class="test-sequence">
+            <!-- <div class="sequence-header">
+                <div class="sequence-title">Login Flow
+                    <div class="edit-title-button" title="Edit title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                        </svg>
+                    </div>
                 </div>
-            </div>
-            <!-- <div class="sequence-stats">
-                <span class="stat stat-passed">3 Recorded</span>
-                <span class="stat stat-failed">2 Manual</span>
-                <span class="stat stat-skipped">0 Skipped</span>
+                <div class="sequence-stats">
+                    <span class="stat stat-passed">3 Recorded</span>
+                    <span class="stat stat-failed">2 Manual</span>
+                    <span class="stat stat-skipped">0 Skipped</span>
+                </div>
             </div> -->
-        </div>
 
-        <div class="steps-container">
-            <!-- Step 1 -->
-            <div class="step-card">
-                <div class="add-step-button left"><span>+</span></div>
-                <div class="add-step-button right"><span>+</span></div>
-                <div class="step-header">
-                    <div class="step-title">
-                        <span class="step-number">1</span>
-                        Login Form
-                    </div>
-                    <span class="step-status status-passed"></span>
-                </div>
-                <div class="step-content">
-                    <p class="step-description">Verify login form displays correctly</p>
-                    <div class="screenshots-grid">
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Login Screen">
-                            <div class="screenshot-label label-full">Full</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Validation">
-                            <div class="screenshot-label label-medium">Medium</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Submit">
-                            <div class="screenshot-label label-focused">Focused</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="steps-container">
+                <div class="step-card" *ngFor="let event of events; trackBy: trackByFn">
+                    <div class="add-step-button left"><span>+</span></div>
+                    <div class="add-step-button right"><span>+</span></div>
+                    <div [ngSwitch]="event.type">
+                        <div *ngSwitchCase="'click'">
+                            <div class="step-header">
+                                <div class="step-title">
+                                    <span class="step-number">-</span>
+                                    Event Type: {{event.type}}
+                                </div>
+                                <span class="step-status status-passed"></span>
+                            </div>
+                            <div class="step-content">
+                                <p class="step-description">Timestamp: {{event.timestamp | date:'medium'}}</p>
+                                <p class="step-description">Coordinates: ({{($any(event)).x}}, {{$any(event).y}})</p>
 
-            <!-- Step 2 -->
-            <div class="step-card">
-                <div class="add-step-button left"><span>+</span></div>
-                <div class="add-step-button right"><span>+</span></div>
-                <div class="step-header">
-                    <div class="step-title">
-                        <span class="step-number">2</span>
-                        Credentials
-                    </div>
-                    <span class="step-status status-passed"></span>
-                </div>
-                <div class="step-content">
-                    <p class="step-description">Verify user can enter valid credentials</p>
-                    <div class="screenshots-grid">
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Username">
-                            <div class="screenshot-label label-full">Full</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Password">
-                            <div class="screenshot-label label-medium">Medium</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Remember Me">
-                            <div class="screenshot-label label-focused">Focused</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 3 -->
-            <div class="step-card">
-                <div class="add-step-button left"><span>+</span></div>
-                <div class="add-step-button right"><span>+</span></div>
-                <div class="step-header">
-                    <div class="step-title">
-                        <span class="step-number">3</span>
-                        Authentication
-                    </div>
-                    <span class="step-status status-passed"></span>
-                </div>
-                <div class="step-content">
-                    <p class="step-description">Verify authentication completes successfully</p>
-                    <div class="screenshots-grid">
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Submit">
-                            <div class="screenshot-label label-full">Full</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Loading">
-                            <div class="screenshot-label label-medium">Medium</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Success">
-                            <div class="screenshot-label label-focused">Focused</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 4 -->
-            <div class="step-card">
-                <div class="add-step-button left"><span>+</span></div>
-                <div class="add-step-button right"><span>+</span></div>
-                <div class="step-header">
-                    <div class="step-title">
-                        <span class="step-number">4</span>
-                        Dashboard
-                    </div>
-                    <span class="step-status status-failed"></span>
-                </div>
-                <div class="step-content">
-                    <p class="step-description">Verify dashboard loads with user data</p>
-                    <div class="screenshots-grid">
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Redirect">
-                            <div class="screenshot-label label-full">Full</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Loading State">
-                            <div class="screenshot-label label-medium">Medium</div>
-                        </div>
-                        <div class="screenshot">
-                            <img src="/api/placeholder/100/75" alt="Error">
-                            <div class="screenshot-label label-focused">Focused</div>
+                                <div class="screenshots-grid">
+                                    <div class="screenshot">
+                                        <img [src]="'data:image/png;base64,' + ($any(event)).fullClickViewBase64" alt="Full View">
+                                        <div class="screenshot-label label-full">Full</div>
+                                    </div>
+                                    <div class="screenshot">
+                                        <img [src]="'data:image/png;base64,' + ($any(event)).maxTrimmedClickViewBase64" alt="Cropped View">
+                                        <div class="screenshot-label label-medium">Cropped</div>
+                                    </div>
+                                    <div class="screenshot">
+                                        <img [src]="'data:image/png;base64,' + ($any(event)).minTrimmedClickViewBase64" alt="Focused View">
+                                        <div class="screenshot-label label-focused">Focused</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
     </div>
 </div>

@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Session } from '../models/session';
+import { map } from 'rxjs/operators';
+import { Session, SessionStatus } from '../models/session';
 import { ConfigurationProviderService } from './configuration-provider-service';
 
 @Injectable({
@@ -12,7 +13,12 @@ export class RecordingHttpService {
 
 
   createRecordingSession(): Observable<Session> {
-    return this.http.get<Session>(`${this.configurationProviderService.backendApiBaseUrl}/recording/session/create`);
+    return this.http.get<Session>(`${this.configurationProviderService.backendApiBaseUrl}/recording/session/create`).pipe(
+      map(session => {
+        session.status = new SessionStatus();
+        return session;
+      })
+    );
   }
 
   destroyRecordingSession(session: Session): Observable<void> {

@@ -437,3 +437,47 @@ button[mat-raised-button] {
 button[mat-raised-button]:active {
   box-shadow: none !important;
 }
+
+input {
+    height: 36px;
+    width: 100%;
+    padding: 0 12px;
+    border: 1px solid #ccc;
+    border-radius: 2px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.main-fab-button {
+    color: #005cbb;
+    background-color: #c4d7ff;;
+    box-shadow: none !important;
+  
+    height: 36px;
+    align-self: flex-end;
+    box-shadow: none;
+  }
+
+  .mat-mdc-button {
+    min-width: 0px !important;
+  }
+  
+  button[mat-raised-button] {
+    height: 36px;
+    padding: 0 16px;
+    align-self: flex-end;
+  
+    color: #005cbb;
+    background-color: #c4d7ff;
+    box-shadow: none !important;
+  
+    border-radius: 10px;
+  }
+  
+  button[mat-raised-button]:active {
+    box-shadow: none !important;
+  }
+  
+  .mat-mdc-button>.mat-icon {
+    margin-right: 0;
+  }

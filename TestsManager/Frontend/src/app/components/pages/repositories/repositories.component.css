@@ -32,8 +32,8 @@
   text-decoration-thickness: 3px;
 }
 
-.add-repository-form {
-  margin-top: 20px;
+.form-fields-container {
+  margin: 0px !important;
 }
 
 .form-fields-container {

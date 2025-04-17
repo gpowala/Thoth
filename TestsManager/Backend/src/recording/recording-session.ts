@@ -54,8 +54,8 @@ export class RecordingSession extends EventEmitter {
 
     public async registerClickEvent(x: number, y: number, clickViewStream: Buffer): Promise<void> {
         try {
-            const minTrimmedImage = await trimClickEventView(clickViewStream, x, y, 100);
-            const maxTrimmedImage = await trimClickEventView(clickViewStream, x, y, 300);
+            const focusedImage = await trimClickEventView(clickViewStream, x, y, 100);
+            const croppedImage = await trimClickEventView(clickViewStream, x, y, 300);
 
             const fullClickViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-click-event-full.png`;
             const minTrimmedClickViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-click-event-min-trim.png`;
@@ -67,8 +67,8 @@ export class RecordingSession extends EventEmitter {
             }
             
             await sharp(clickViewStream).toFile(fullClickViewFilepath);
-            await sharp(minTrimmedImage).toFile(minTrimmedClickViewFilepath);
-            await sharp(maxTrimmedImage).toFile(maxTrimmedClickViewFilepath);
+            await sharp(focusedImage).toFile(minTrimmedClickViewFilepath);
+            await sharp(croppedImage).toFile(maxTrimmedClickViewFilepath);
             
             if (!fs.existsSync(fullClickViewFilepath) || !fs.existsSync(minTrimmedClickViewFilepath) || !fs.existsSync(maxTrimmedClickViewFilepath)) {
                 console.error('Failed to create click event files:', fullClickViewFilepath, minTrimmedClickViewFilepath, maxTrimmedClickViewFilepath);
@@ -77,7 +77,7 @@ export class RecordingSession extends EventEmitter {
             
             console.log(`Successfully saved click event to ${fullClickViewFilepath} and ${minTrimmedClickViewFilepath} and ${maxTrimmedClickViewFilepath}`);
             
-            this.recordedEvents.push(new ClickEvent(new Date(), x, y, fullClickViewFilepath, minTrimmedClickViewFilepath, maxTrimmedClickViewFilepath, clickViewStream.toString('base64'), minTrimmedImage.toString('base64'), maxTrimmedImage.toString('base64')));
+            this.recordedEvents.push(new ClickEvent(new Date(), x, y, fullClickViewFilepath, minTrimmedClickViewFilepath, maxTrimmedClickViewFilepath, clickViewStream.toString('base64'), focusedImage.toString('base64'), croppedImage.toString('base64')));
             this.invokeClickEventRegistered();
         } catch (error) {
             console.error('Error in registerClickEvent:', error);

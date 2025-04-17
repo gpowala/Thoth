@@ -11,7 +11,7 @@ import { Repository } from '../../../models/repository';
 import { RepositoriesHttpService } from '../../../services/repositories-http-service';
 import { ElectronIpcService } from '../../../services/electron-ipc-service';
 import { RecordingHttpService } from '../../../services/recording-http-service';
-import { Session } from '../../../models/session';
+import { Session, SessionStatus } from '../../../models/session';
 import { skip } from 'rxjs';
 import { ClickEvent } from '../../../models/events/click-event';
 import { KeypressEvent } from '../../../models/events/keypress-event';
@@ -65,14 +65,22 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     private renderer: Renderer2
   ) {
     this.getRepositories();
-
+    console.log('Session status:', this.session);
+    console.log('Session status:', this.session.status);
     this.electronIpcService.sessionStatus$.pipe(skip(1)).subscribe(() => {
+        console.log('Received event - session status changed. Session status:', this.session.status);
         this.recordingHttpService.isRecordingSessionActive(this.session).subscribe({
           next: (isActive: boolean) => {
+            console.log('Session status after isRecordingSessionActive:', this.session.status);
             if (isActive) {
               this.session.status.isActive = isActive;
               this.status = TestCreationStatus.SESSION_STARTED;
+              console.log('Session started');
+            } else {
+              this.status = TestCreationStatus.SESSION_STOPPED;
+              console.log('Session stopped');
             }
+            this.cdr.detectChanges();
           }
 
         });
@@ -271,6 +279,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
       next: (session: Session) => {
         this.session = session;
         console.log('Session created:', this.session);
+        console.log('Session status:', this.session.status.isActive);
         this.status = TestCreationStatus.SESSION_CREATED;
       }
     });

@@ -15,8 +15,8 @@ export async function trimClickEventView(imageBuffer: Buffer, clickX: number, cl
     .extract({
       top: trimTop,
       left: trimLeft,
-      width: Math.min(100, metadata.width - trimLeft),
-      height: Math.min(100, metadata.height - trimTop)
+      width: Math.min(radius, metadata.width - trimLeft),
+      height: Math.min(radius, metadata.height - trimTop)
     })
     .toBuffer();
 
