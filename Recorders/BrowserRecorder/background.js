@@ -5,6 +5,68 @@ let sessionId = '';
 
 let isSessionActiveInterval = null;
 
+// Initialize the extension on startup
+chrome.runtime.onStartup.addListener(() => {
+    initializeExtension();
+});
+
+chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+        initializeExtension();
+    } else if (details.reason === 'update') {
+        // Clear any existing alarms when updating
+        chrome.alarms.clear('isSessionActive');
+        console.log('Extension updated, cleared existing alarms');
+    }
+});
+
+// Clean up when the extension is unloaded
+chrome.runtime.onSuspend.addListener(() => {
+    if (recordingTabId >= 0) {
+        console.log('Extension unloading, stopping recording');
+        stopRecording();
+    }
+});
+
+// Clean up when the extension is disabled
+// chrome.management.onDisabled.addListener((extensionInfo) => {
+//     if (extensionInfo.id === chrome.runtime.id) {
+//         console.log('Extension disabled, clearing alarms');
+//         chrome.alarms.clear('isSessionActive');
+//     }
+// });
+
+// Clean up when the extension is uninstalled
+// chrome.management.onUninstalled.addListener((extensionInfo) => {
+//     if (extensionInfo.id === chrome.runtime.id) {
+//         console.log('Extension uninstalled, clearing alarms');
+//         chrome.alarms.clear('isSessionActive');
+//     }
+// });
+
+// Clean up when the extension is reloaded
+chrome.runtime.onStartup.addListener(() => {
+    // Clear any existing alarms when starting up
+    chrome.alarms.clear('isSessionActive');
+    console.log('Extension starting up, cleared existing alarms');
+});
+
+// Clean up when the extension is reloaded
+// chrome.runtime.onSuspend.addListener(() => {
+//     if (recordingTabId >= 0) {
+//         console.log('Extension unloading, stopping recording');
+//         stopRecording();
+//     }
+// });
+
+var initializeExtension = () => {
+    // Clear any existing alarms to prevent errors
+    chrome.alarms.clear('isSessionActive');
+    
+    // Restore recording state from storage
+    restoreRecordingState();
+}
+
 var storeRecordingState = (serverUrl, sessionId, recordingTabId, isRecording) => {
     chrome.storage.local.set({
         'serverUrl': serverUrl,
@@ -18,12 +80,22 @@ var storeRecordingState = (serverUrl, sessionId, recordingTabId, isRecording) =>
 
 var restoreRecordingState = () => {
     chrome.storage.local.get(['serverUrl', 'sessionId', 'recordingTabId', 'isRecording'], function(result) {
-        serverUrl = result.serverUrl;
-        sessionId = result.sessionId;
-        recordingTabId = result.recordingTabId;
-        isRecording = result.isRecording;
+        serverUrl = result.serverUrl || '';
+        sessionId = result.sessionId || '';
+        recordingTabId = result.recordingTabId || -1;
+        isRecording = result.isRecording || false;
         
-        console.log('Restored recording session from storage');
+        // Validate the restored state
+        if (!isRecording || recordingTabId < 0 || !serverUrl || !sessionId) {
+            console.log('Invalid recording state restored, clearing state');
+            recordingTabId = -1;
+            serverUrl = '';
+            sessionId = '';
+            isRecording = false;
+            storeRecordingState('', '', -1, false);
+        } else {
+            console.log('Restored recording session from storage');
+        }
     });
 }
 
@@ -31,28 +103,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) =>
 {
     if (message.action === "tests-recorder-start-recording")
     {
-        recordingTabId = getActiveTabId();
+        getActiveTabId().then(tabId => {
+            recordingTabId = tabId;
+            
+            const url = new URL(message.serverUrl);
+            serverUrl = `${url.protocol}//${url.host}`;
+            sessionId = url.searchParams.get('guid');
 
-        const url = new URL(message.serverUrl);
-        serverUrl = `${url.protocol}//${url.host}`;
-        sessionId = url.searchParams.get('guid');
-
-        startRecording();
-        storeRecordingState(serverUrl, sessionId, recordingTabId, true);
+            startRecording();
+            storeRecordingState(serverUrl, sessionId, recordingTabId, true);
+        }).catch(error => {
+            console.error('Failed to get active tab ID:', error);
+        });
     }
 
     if (message.action === "tests-recorder-stop-recording")
     {
         stopRecording();
         storeRecordingState('', '', -1, false);
-
-        recordingTabId = -1;
-
-        serverUrl = '';
-        sessionId = '';
     }
 
-    if (recordingTabId === getActiveTabId())
+    // Check if the current tab is the recording tab
+    if (sender.tab && sender.tab.id === recordingTabId)
     {
         if (message.action === "tests-recorder-click-event")
         {    
@@ -84,52 +156,121 @@ chrome.alarms.onAlarm.addListener((alarm) =>
     }
 });
 
+// Listen for tab removal to stop recording if the recording tab is closed
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+    if (tabId === recordingTabId) {
+        console.log('Recording tab was closed, stopping recording');
+        stopRecording();
+        storeRecordingState('', '', -1, false);
+    }
+});
+
+// Listen for window removal to stop recording if the recording window is closed
+chrome.windows.onRemoved.addListener((windowId) => {
+    if (recordingTabId >= 0) {
+        chrome.tabs.get(recordingTabId, (tab) => {
+            if (chrome.runtime.lastError || tab.windowId === windowId) {
+                console.log('Recording window was closed, stopping recording');
+                stopRecording();
+                storeRecordingState('', '', -1, false);
+            }
+        });
+    }
+});
+
 var getActiveTabId = () =>
 {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) =>
-    {
-        if (tabs.length !== 0)
+    return new Promise((resolve, reject) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) =>
         {
-            console.log('Active tab: ', tabs[0].windowId);
-            return tabs[0].windowId;
-        }
-        else
-        {
-            throw Error('No active tab found');
-        }
+            if (tabs.length !== 0)
+            {
+                console.log('Active tab: ', tabs[0].id);
+                resolve(tabs[0].id);
+            }
+            else
+            {
+                reject(new Error('No active tab found'));
+            }
+        });
     });
 }
 
 var startRecording = () =>
 {
+    // Only start recording if we have valid session data
+    if (!serverUrl || !sessionId || recordingTabId < 0) {
+        console.error('Cannot start recording: missing required session data');
+        return;
+    }
+    
     fetch(serverUrl + '/recording/session/start?guid=' + sessionId, {method: 'GET'})
     .then(() =>
     {
-        chrome.alarms.create('isSessionActive', { periodInMinutes: 1 });
-        console.log('Recording started!')
+        // Only create alarm if we have a valid recording tab
+        if (recordingTabId >= 0) {
+            // Verify the tab still exists before creating the alarm
+            chrome.tabs.get(recordingTabId, (tab) => {
+                if (chrome.runtime.lastError) {
+                    console.error('Recording tab no longer exists, cannot start recording');
+                    stopRecording();
+                    return;
+                }
+                
+                chrome.alarms.create('isSessionActive', { periodInMinutes: 1 });
+                console.log('Recording started!')
+            });
+        } else {
+            console.error('Cannot create alarm: invalid recording tab ID');
+        }
     })
     .catch((error) => console.error('Error upon recording start: ', error));
 }
 
 var stopRecording = () =>
 {
-    fetch(serverUrl + '/recording/session/stop?guid=' + sessionId, {method: 'GET'})
-    .then(console.log('Recording stopped!'))
-    .catch((error) => console.error('Error upon recording stop:', error));
-
+    // Clear the alarm first to prevent further calls to isActive
     chrome.alarms.clear('isSessionActive');
+    
+    // Only make the API call if we have valid session data
+    if (serverUrl && sessionId) {
+        fetch(serverUrl + '/recording/session/stop?guid=' + sessionId, {method: 'GET'})
+        .then(console.log('Recording stopped!'))
+        .catch((error) => console.error('Error upon recording stop:', error));
+    }
+
+    // Reset recording state
+    recordingTabId = -1;
+    serverUrl = '';
+    sessionId = '';
 }
 
 var isActive = () =>
 {
-    // Prevent tab from sleeping
-    chrome.tabs.update(recordingTabId, { active: true });
-    
-    fetch(serverUrl + '/recording/session/is-active?guid=' + sessionId, {method: 'GET'})
-    .catch((error) =>
-    {
-        console.error('Error upon recording is-active:', error);
+    // Check if recordingTabId is valid before proceeding
+    if (recordingTabId < 0) {
+        console.log('Recording tab ID is invalid, stopping recording');
         stopRecording();
+        return;
+    }
+    
+    // Check if the tab still exists before trying to update it
+    chrome.tabs.get(recordingTabId, (tab) => {
+        if (chrome.runtime.lastError) {
+            console.log('Recording tab no longer exists, stopping recording');
+            stopRecording();
+            return;
+        }
+        
+        // Prevent tab from sleeping
+        chrome.tabs.update(recordingTabId, { active: true });
+        
+        fetch(serverUrl + '/recording/session/is-active?guid=' + sessionId, {method: 'GET'})
+        .catch((error) =>
+        {
+            console.error('Error upon recording is-active:', error);
+            stopRecording();
+        });
     });
 }
 
