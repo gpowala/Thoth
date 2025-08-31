@@ -67,23 +67,17 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     this.getRepositories();
     console.log('Session status:', this.session);
     console.log('Session status:', this.session.status);
-    this.electronIpcService.sessionStatus$.pipe(skip(1)).subscribe(() => {
-        console.log('Received event - session status changed. Session status:', this.session.status);
-        this.recordingHttpService.isRecordingSessionActive(this.session).subscribe({
-          next: (isActive: boolean) => {
-            console.log('Session status after isRecordingSessionActive:', this.session.status);
-            if (isActive) {
-              this.session.status.isActive = isActive;
-              this.status = TestCreationStatus.SESSION_STARTED;
-              console.log('Session started');
-            } else {
-              this.status = TestCreationStatus.SESSION_STOPPED;
-              console.log('Session stopped');
-            }
-            this.cdr.detectChanges();
-          }
-
-        });
+    this.electronIpcService.sessionStatus$.pipe(skip(1)).subscribe((isActive: boolean) => {
+      if (isActive) {
+        this.session.status.isActive = isActive;
+        this.status = TestCreationStatus.SESSION_STARTED;
+        console.log('Session started: ', isActive);
+      } else {
+        this.session.status.isActive = isActive;
+        this.status = TestCreationStatus.SESSION_STOPPED;
+        console.log('Session stopped: ', isActive);
+      }
+      this.cdr.detectChanges();
     });
 
     this.ngZone.run(() => {

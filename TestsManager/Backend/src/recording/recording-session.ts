@@ -35,17 +35,17 @@ export class RecordingSession extends EventEmitter {
 
     public start(): void {
         this.sessionDirectory = this.createSessionDirectoryIfNotExists();
-        console.log(`Session directory created: ${this.sessionDirectory}`);
-        console.log(`Session id: ${this.id}`);
         this.isRecording = true;
 
-        this.invokeSessionStatusChanged();
+        console.log(`Session ${this.id} started, session directory created: ${this.sessionDirectory}.`);
+        this.invokeSessionStarted();
     }
 
     public stop(): void {
         this.isRecording = false;
 
-        this.invokeSessionStatusChanged();
+        console.log(`Session ${this.id} stopped.`);
+        this.invokeSessionStopped();
     }
 
     public isActive(): boolean {
@@ -62,8 +62,7 @@ export class RecordingSession extends EventEmitter {
             const maxTrimmedClickViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-click-event-max-trim.png`;
             
             if (!this.sessionDirectory || !fs.existsSync(this.sessionDirectory)) {
-                console.error('Session directory does not exist:', this.sessionDirectory);
-                throw new Error('Session directory does not exist');
+                throw new Error(`Session directory does not exist: ${this.sessionDirectory}`);
             }
             
             await sharp(clickViewStream).toFile(fullClickViewFilepath);
@@ -71,8 +70,7 @@ export class RecordingSession extends EventEmitter {
             await sharp(croppedImage).toFile(maxTrimmedClickViewFilepath);
             
             if (!fs.existsSync(fullClickViewFilepath) || !fs.existsSync(minTrimmedClickViewFilepath) || !fs.existsSync(maxTrimmedClickViewFilepath)) {
-                console.error('Failed to create click event files:', fullClickViewFilepath, minTrimmedClickViewFilepath, maxTrimmedClickViewFilepath);
-                throw new Error('Failed to create click event files');
+                throw new Error(`Failed to create click event files: ${fullClickViewFilepath}, ${minTrimmedClickViewFilepath}, ${maxTrimmedClickViewFilepath}`);
             }
             
             console.log(`Successfully saved click event to ${fullClickViewFilepath} and ${minTrimmedClickViewFilepath} and ${maxTrimmedClickViewFilepath}`);
@@ -95,8 +93,12 @@ export class RecordingSession extends EventEmitter {
         }
     }
 
-    private invokeSessionStatusChanged(): void {
-        console.log('BACKEND_EVENT:SESSION_STATUS_CHANGED');
+    private invokeSessionStarted(): void {
+        console.log('BACKEND_EVENT:SESSION_STARTED');
+    }
+
+    private invokeSessionStopped(): void {
+        console.log('BACKEND_EVENT:SESSION_STOPPED');
     }
 
     private invokeClickEventRegistered(): void {

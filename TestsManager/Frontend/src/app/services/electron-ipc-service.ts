@@ -5,7 +5,7 @@ import { BehaviorSubject } from 'rxjs';
   providedIn: 'root'
 })
 export class ElectronIpcService {
-  private sessionStatusSubject = new BehaviorSubject<void>(undefined);
+  private sessionStatusSubject = new BehaviorSubject<boolean>(false);
   sessionStatus$ = this.sessionStatusSubject.asObservable();
 
   private browserEventRegisteredSubject = new BehaviorSubject<void>(undefined);
@@ -19,9 +19,13 @@ export class ElectronIpcService {
 
     if ((window as any).electronAPI) {
       (window as any).electronAPI.onBackendEvent((message: string) => {
-        if (message === 'SESSION_STATUS_CHANGED') {
-          console.log('ElectronIpcService: Session status changed.');
-          this.sessionStatusSubject.next(undefined);
+        if (message === 'SESSION_STARTED') {
+          console.log('ElectronIpcService: Session started.');
+          this.sessionStatusSubject.next(true);
+        }
+        if (message === 'SESSION_STOPPED') {
+          console.log('ElectronIpcService: Session stopped.');
+          this.sessionStatusSubject.next(false);
         }
         if (message === 'CLICK_EVENT_REGISTERED') {
           console.log('ElectronIpcService: Click event registered.');

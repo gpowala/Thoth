@@ -43,8 +43,12 @@ async function spawnBackend(backendPort) {
         const message = data.toString().trim();
         console.log(`Backend says: ${message}`);
 
-        if (message.includes("BACKEND_EVENT:SESSION_STATUS_CHANGED") && mainWindow) {
-            mainWindow.webContents.send('BACKEND_EVENT', 'SESSION_STATUS_CHANGED');
+        if (message.includes("BACKEND_EVENT:SESSION_STARTED") && mainWindow) {
+            mainWindow.webContents.send('BACKEND_EVENT', 'SESSION_STARTED');
+        }
+
+        if (message.includes("BACKEND_EVENT:SESSION_STOPPED") && mainWindow) {
+            mainWindow.webContents.send('BACKEND_EVENT', 'SESSION_STOPPED');
         }
 
         if (message.includes("BACKEND_EVENT:CLICK_EVENT_REGISTERED") && mainWindow) {

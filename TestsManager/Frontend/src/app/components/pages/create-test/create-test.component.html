@@ -72,6 +72,14 @@
         </mat-card-content>
     </mat-card> -->
     <div style="width: 100%; margin-top: 20px;" *ngIf="status === TestCreationStatus.SESSION_STARTED || status === TestCreationStatus.SESSION_STOPPED">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="controls">Session Status: {{session.status.isActive ? 'Active' : 'Inactive'}}</div>
+            <div class="controls">
+                <button mat-raised-button color="primary">
+                    Stop Session
+                </button>
+            </div>
+        </div>
         <div class="controls">
             <button class="filter-button active">All Steps</button>
             <button class="filter-button">Recorded Only</button>
