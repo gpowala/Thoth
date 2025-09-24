@@ -4,7 +4,7 @@
     "name": "Screenshot Sender",
     "version": "1.0",
     
-    "permissions": ["activeTab", "tabs", "alarms", "storage"],
+    "permissions": ["activeTab", "tabs", "alarms", "storage", "scripting"],
     "host_permissions": ["<all_urls>"],
     
     "content_scripts": [
