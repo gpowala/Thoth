@@ -10,14 +10,13 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { Repository } from '../../../models/repository';
 import { RepositoriesHttpService } from '../../../services/repositories-http-service';
 import { ElectronIpcService } from '../../../services/electron-ipc-service';
-import { RecordingHttpService } from '../../../services/recording-http-service';
 import { Session, SessionStatus } from '../../../models/session';
-import { skip } from 'rxjs';
 import { ClickEvent } from '../../../models/events/click-event';
 import { KeypressEvent } from '../../../models/events/keypress-event';
 import { AreaSelectEvent } from '../../../models/events/area-select-event';
 import { IEvent } from '../../../models/events/event-interface';
 import { ImageGalleryComponent } from './image-gallery/image-gallery.component';
+import { RecordingSessionService } from '../../../services/recording-session-service';
 
 
 export enum TestCreationStatus {
@@ -48,7 +47,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
   status: TestCreationStatus = TestCreationStatus.SESSION_SETUP;
 
   session: Session = new Session();
-  events: IEvent[] = [];
+  processedEvents: IEvent[] = [];
 
   repositories: Repository[] = [];
 
@@ -57,8 +56,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
 
   constructor(
     private repositoryHttpService: RepositoriesHttpService,
-    private recordingHttpService: RecordingHttpService,
-    private electronIpcService: ElectronIpcService,
+    private recordingSessionService: RecordingSessionService,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
     private dialog: MatDialog,
@@ -67,62 +65,58 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     this.getRepositories();
     console.log('Session status:', this.session);
     console.log('Session status:', this.session.status);
-    this.electronIpcService.sessionStatus$.pipe(skip(1)).subscribe((isActive: boolean) => {
-      if (isActive) {
-        this.session.status.isActive = isActive;
-        this.status = TestCreationStatus.SESSION_STARTED;
-        console.log('Session started: ', isActive);
-      } else {
-        this.session.status.isActive = isActive;
-        this.status = TestCreationStatus.SESSION_STOPPED;
-        console.log('Session stopped: ', isActive);
-      }
+
+    this.recordingSessionService.recordingSessionChanged$.subscribe((session: Session) => {
+      this.session = session;
       this.cdr.detectChanges();
     });
 
     this.ngZone.run(() => {
-      this.electronIpcService.browserEventRegistered$.pipe(skip(1)).subscribe(() => {
-        this.recordingHttpService.getRecordedEvents(this.session).subscribe({
-          next: (events: any[]) => {
-            const mappedEvents = events.map((event: any) => {
-              const data = JSON.parse(event.data);
-              switch (event.type) {
-                case 'click':
-                  return new ClickEvent(event.id, event.timestamp, data.x, data.y, data.fullClickViewFilepath, data.minTrimmedClickViewFilepath, data.maxTrimmedClickViewFilepath, data.fullClickViewBase64, data.minTrimmedClickViewBase64, data.maxTrimmedClickViewBase64);
-                case 'keypress':
-                  return new KeypressEvent(event.id, event.timestamp, data.keys);
-                case 'area-select':
-                  return new AreaSelectEvent(event.id, event.timestamp, data.top, data.bottom, data.left, data.right, data.areaSelectViewFilepath, data.areaSelectViewBase64);
-                default:
-                  throw new Error(`Unknown event type: ${event.type}`);
-              }
-            });
+      this.recordingSessionService.recordingSessionChanged$.subscribe((session: Session) => {
+        this.session = session;
+        if (this.session.status.isActive) {
+          this.status = TestCreationStatus.SESSION_STARTED;
+        } else {
+          this.status = TestCreationStatus.SESSION_STOPPED;
+        }
 
-            mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
-
-            const processedEvents: IEvent[] = [];
-            let currentKeypressGroup: KeypressEvent[] = [];
-
-            mappedEvents.forEach((event) => {
-              if (event instanceof KeypressEvent) {
-                currentKeypressGroup.push(event);
-              } else {
-                if (currentKeypressGroup.length > 0) {
-                  processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
-                  currentKeypressGroup = [];
-                }
-                processedEvents.push(event);
-              }
-            });
-
-            if (currentKeypressGroup.length > 0) {
-              processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
-            }
-
-            this.events = processedEvents;
-            this.cdr.detectChanges();
+        const mappedEvents = session.status.events.map((event: any) => {
+          const data = JSON.parse(event.data);
+          switch (event.type) {
+            case 'click':
+              return new ClickEvent(event.id, event.timestamp, data.x, data.y, data.fullClickViewFilepath, data.minTrimmedClickViewFilepath, data.maxTrimmedClickViewFilepath, data.fullClickViewBase64, data.minTrimmedClickViewBase64, data.maxTrimmedClickViewBase64);
+            case 'keypress':
+              return new KeypressEvent(event.id, event.timestamp, data.keys);
+            case 'area-select':
+              return new AreaSelectEvent(event.id, event.timestamp, data.top, data.bottom, data.left, data.right, data.areaSelectViewFilepath, data.areaSelectViewBase64);
+            default:
+              throw new Error(`Unknown event type: ${event.type}`);
           }
         });
+
+        mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+
+        const processedEvents: IEvent[] = [];
+        let currentKeypressGroup: KeypressEvent[] = [];
+
+        mappedEvents.forEach((event) => {
+          if (event instanceof KeypressEvent) {
+            currentKeypressGroup.push(event);
+          } else {
+            if (currentKeypressGroup.length > 0) {
+              processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
+              currentKeypressGroup = [];
+            }
+            processedEvents.push(event);
+          }
+        });
+
+        if (currentKeypressGroup.length > 0) {
+          processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
+        }
+
+        this.processedEvents = processedEvents;
+        this.cdr.detectChanges();
       });
     });
   }
@@ -269,7 +263,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
   }
 
   createRecordingSession(): void {
-    this.recordingHttpService.createRecordingSession().subscribe({
+    this.recordingSessionService.createRecordingSession().subscribe({
       next: (session: Session) => {
         this.session = session;
         console.log('Session created:', this.session);

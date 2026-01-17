@@ -56,17 +56,17 @@ app.get('/recording/session/stop', (req: Request, res: Response) => {
     res.sendStatus(200);
 });
 
-app.get('/recording/session/is-active', (req: Request, res: Response) => {
-    const { guid } = req.query;
-    const isActive = recordingService.isActive(guid as string);
-    console.log(`Session ${guid} is ${isActive ? 'active' : 'inactive'}`);
-    res.json({ isActive: isActive });
-});
+app.get('/recording/session/update', (req: Request, res: Response) => {
+    const { guid, nextEventId } = req.query;
 
-app.get('/recording/events', (req: Request, res: Response) => {
-    const { guid } = req.query;
+    const isActive = recordingService.isActive(guid as string);
+    
+    const nextEventIdNumber = Number(nextEventId);
     const events = recordingService.getRecordedEvents(guid as string);
-    res.json(events);
+    const newEvents = events.length >= nextEventIdNumber ? events.slice(nextEventIdNumber) : [];
+    
+    console.log(`Session ${guid} is ${isActive ? 'active' : 'inactive'} with ${newEvents.length} new events`);
+    res.json({ isActive: isActive, events: newEvents });
 });
 
 const storage = multer.memoryStorage();
@@ -221,6 +221,11 @@ app.delete('/repository', async (req: Request, res: Response) => {
         console.error('Error deleting repository:', error);
         res.status(500).json({ error: 'An error occurred while deleting the repository' });
     }
+});
+
+app.get('/configuration/default-repositories-directory', async (req: Request, res: Response) => {
+    const defaultRepositoryDirectory = path.join(__dirname, '..', '..', 'repositories');
+    res.status(200).json({ defaultRepositoryDirectory: defaultRepositoryDirectory });
 });
 
 app.listen(port, () => {

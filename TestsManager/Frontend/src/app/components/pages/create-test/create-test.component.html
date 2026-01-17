@@ -105,7 +105,7 @@
             </div> -->
 
             <div class="steps-container">
-                <div class="step-card" *ngFor="let event of events; trackBy: trackByFn">
+                <div class="step-card" *ngFor="let event of processedEvents; trackBy: trackByFn">
                     <div class="add-step-button left"><span>+</span></div>
                     <div class="add-step-button right"><span>+</span></div>
                     <div [ngSwitch]="event.type">
