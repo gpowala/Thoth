@@ -5,14 +5,20 @@
     <link href="styles.css" rel="stylesheet">
 </head>
 <body>
-    <h3>Thoth Tests Recorder</h3>
-    <div><label>session url:</label></div>
-    <div><input type="text" id="sessionUrlInput" class="connectionDetailsInput"></div>
-    <br>
-    <div><button id="startRecordingBtn">start recording</button><label id="recordingStartLabel" class="statusLabel" hidden>Starting recording session...</label></div>
-    <div><button id="stopRecordingBtn" hidden disabled>stop recording</button><label id="recordingStopLabel" class="statusLabel" hidden>Finishing recording session...</label></div>
-    <div><button id="resetStateBtn" class="resetButton">reset state</button></div>
-    <div><button id="testContentScriptBtn" class="testButton">test content script</button></div>
+    <div class="popup-container">
+        <h3>Thoth Tests Recorder</h3>
+        <div class="session-url-container" id="sessionUrlContainer">
+            <label>Session URL:</label>
+            <input type="text" id="sessionUrlInput" class="connectionDetailsInput" placeholder="Paste session URL here...">
+        </div>
+        <div class="button-container">
+            <button id="startRecordingBtn" class="recording-btn start-btn">Start Recording</button>
+            <button id="stopRecordingBtn" class="recording-btn stop-btn" hidden>Stop Recording</button>
+        </div>
+        <div class="status-container">
+            <span id="statusLabel" class="statusLabel"></span>
+        </div>
+    </div>
     
     <script src="jquery/jquery-3.7.1.min.js"></script>
     <script src="popup.js"></script>

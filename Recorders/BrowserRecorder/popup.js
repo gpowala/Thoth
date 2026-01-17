@@ -1,93 +1,67 @@
 $(document).ready(() => {
     // Get the current recording state from the background script
     chrome.storage.local.get(['isRecording', 'serverUrl'], function(result) {
-        if(result.isRecording === true) {
-            $("#startRecordingBtn").prop( "disabled", true );
-            $("#recordingStartLabel").show();
-            $("#recordingStopLabel").hide();
-            $("#startRecordingBtn").hide();
-            $("#stopRecordingBtn").prop( "disabled", false );
-            $("#stopRecordingBtn").show();
-            $("#sessionUrlInput").prop( "disabled", true );
-        } else {
-            $("#stopRecordingBtn").prop( "disabled", true );
-            $("#recordingStopLabel").show();
-            $("#recordingStartLabel").hide();
-            $("#stopRecordingBtn").hide();
-            $("#startRecordingBtn").prop( "disabled", false );
-            $("#startRecordingBtn").show();
-            $("#sessionUrlInput").prop( "disabled", false );
-        }
-
+        updateUI(result.isRecording === true);
         $("#sessionUrlInput").val(result.serverUrl || '');
     });
 });
 
-$("#startRecordingBtn").click(() => {
-    $("#startRecordingBtn").prop( "disabled", true );
-    $("#recordingStartLabel").show();
+function updateUI(isRecording) {
+    if (isRecording) {
+        $("#startRecordingBtn").hide();
+        $("#stopRecordingBtn").show();
+        $("#sessionUrlInput").prop("disabled", true);
+        $("#sessionUrlContainer").addClass("disabled");
+        $("#statusLabel").text("Recording in progress...").addClass("recording");
+    } else {
+        $("#stopRecordingBtn").hide();
+        $("#startRecordingBtn").show();
+        $("#sessionUrlInput").prop("disabled", false);
+        $("#sessionUrlContainer").removeClass("disabled");
+        $("#statusLabel").text("").removeClass("recording");
+    }
+}
 
+$("#startRecordingBtn").click(() => {
+    const sessionUrl = $("#sessionUrlInput").val().trim();
+    
+    if (!sessionUrl) {
+        $("#statusLabel").text("Please enter a session URL").addClass("error");
+        return;
+    }
+    
+    $("#statusLabel").removeClass("error");
+    
     chrome.runtime.sendMessage({
         action: "tests-recorder-start-recording",
-        serverUrl: $("#sessionUrlInput").val()
+        serverUrl: sessionUrl
     });
-
-    $("#recordingStartLabel").hide();
-    $("#startRecordingBtn").hide();
-
-    $("#stopRecordingBtn").prop( "disabled", false );
-    $("#stopRecordingBtn").show();
-
-    $("#sessionUrlInput").prop( "disabled", true );
 
     // Store in chrome.storage.local to sync with background script
     chrome.storage.local.set({
-        'serverUrl': $("#sessionUrlInput").val(),
+        'serverUrl': sessionUrl,
         'isRecording': true
     });
+    
+    updateUI(true);
 });
 
 $("#stopRecordingBtn").click(() => {
-    $("#stopRecordingBtn").prop( "disabled", true );
-    $("#recordingStopLabel").show();
-
     chrome.runtime.sendMessage({action: "tests-recorder-stop-recording"});
     
-    $("#recordingStopLabel").hide();
-    $("#stopRecordingBtn").hide();
-    
-    $("#startRecordingBtn").prop( "disabled", false );
-    $("#startRecordingBtn").show();
-
-    $("#sessionUrlInput").prop( "disabled", false );
-
     // Store in chrome.storage.local to sync with background script
     chrome.storage.local.set({
         'isRecording': false
     });
+    
+    updateUI(false);
 });
 
 // Listen for storage changes to update UI state
 chrome.storage.onChanged.addListener(function(changes, namespace) {
     if (namespace === 'local') {
         if (changes.isRecording) {
-            if (changes.isRecording.newValue === true) {
-                $("#startRecordingBtn").prop( "disabled", true );
-                $("#recordingStartLabel").show();
-                $("#recordingStopLabel").hide();
-                $("#startRecordingBtn").hide();
-                $("#stopRecordingBtn").prop( "disabled", false );
-                $("#stopRecordingBtn").show();
-                $("#sessionUrlInput").prop( "disabled", true );
-            } else {
-                $("#stopRecordingBtn").prop( "disabled", true );
-                $("#recordingStopLabel").show();
-                $("#recordingStartLabel").hide();
-                $("#stopRecordingBtn").hide();
-                $("#startRecordingBtn").prop( "disabled", false );
-                $("#startRecordingBtn").show();
-                $("#sessionUrlInput").prop( "disabled", false );
-            }
+            updateUI(changes.isRecording.newValue === true);
         }
         
         if (changes.serverUrl) {
@@ -95,35 +69,3 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
         }
     }
 });
-
-// Reset button functionality
-$("#resetStateBtn").click(() => {
-    chrome.runtime.sendMessage({action: "tests-recorder-reset-state"}, function(response) {
-        if (response && response.success) {
-            console.log('Recording state reset successfully');
-            // Update UI to reflect reset state
-            $("#stopRecordingBtn").prop( "disabled", true );
-            $("#recordingStopLabel").show();
-            $("#recordingStartLabel").hide();
-            $("#stopRecordingBtn").hide();
-            $("#startRecordingBtn").prop( "disabled", false );
-            $("#startRecordingBtn").show();
-            $("#sessionUrlInput").prop( "disabled", false );
-        }
-    });
-});
-
-// Test content script button functionality
-$("#testContentScriptBtn").click(() => {
-    chrome.runtime.sendMessage({action: "tests-recorder-test-content-script"}, function(response) {
-        if (response) {
-            console.log('Content script test result:', response.message);
-            // You could show this message to the user if needed
-            alert(response.message);
-        }
-    });
-});
-
-// $("#sessionUrlInput").on("input", function() {
-//     localStorage.setItem("tests-recorder-server-url", $("#sessionUrlInput").val());
-// });

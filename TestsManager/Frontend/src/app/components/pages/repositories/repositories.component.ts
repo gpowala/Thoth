@@ -11,7 +11,6 @@ import { CommonModule } from '@angular/common';
 import { Repository } from '../../../models/repository';
 import { RepositoriesHttpService } from '../../../services/repositories-http-service';
 import { FormsModule } from '@angular/forms';
-import { ElectronIpcService } from '../../../services/electron-ipc-service';
 
 @Component({
   selector: 'app-repositories',
@@ -47,9 +46,16 @@ export class RepositoriesComponent {
 
   private _snackBar = inject(MatSnackBar);
   isCloningRespotitory: boolean = false;
+  isSelectingDirectory: boolean = false;
+  isDirectoryDialogOpen: boolean = false;
+  isAddRepositoryDialogOpen: boolean = false;
+  directoryDialogMessage: string = "";
+  currentDirectoryPath: string = "";
+  currentDirectoryParentPath: string = "";
+  isCurrentDirectoryRoot: boolean = true;
+  directoryEntries: { name: string; path: string; hasChildren: boolean }[] = [];
 
   constructor(
-    private electronIpcService: ElectronIpcService,
     private repositoryHttpService: RepositoriesHttpService,
     private cdr: ChangeDetectorRef
   ) {
@@ -57,10 +63,92 @@ export class RepositoriesComponent {
   }
 
   browseForDirectory() {
-    this.electronIpcService.selectDirectory().then(directory => {
-      this.repositoryLocalDirectory = directory;
+    this.directoryDialogMessage = "";
+    this.isDirectoryDialogOpen = true;
+    this.cdr.detectChanges();
+    const initialPath = this.repositoryLocalDirectory?.trim();
+    this.loadDirectoryEntries(initialPath ? initialPath : undefined, Boolean(initialPath));
+  }
+
+  openAddRepositoryDialog() {
+    this.isAddRepositoryDialogOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeAddRepositoryDialog() {
+    if (this.isCloningRespotitory) {
+      return;
+    }
+    this.isAddRepositoryDialogOpen = false;
+    this.cdr.detectChanges();
+  }
+
+  closeDirectoryDialog() {
+    if (this.isSelectingDirectory) {
+      return;
+    }
+    this.isDirectoryDialogOpen = false;
+    this.directoryDialogMessage = "";
+    this.cdr.detectChanges();
+  }
+
+  selectCurrentDirectory() {
+    if (!this.currentDirectoryPath) {
+      this.directoryDialogMessage = "Select a folder before continuing.";
       this.cdr.detectChanges();
+      return;
+    }
+    this.repositoryLocalDirectory = this.currentDirectoryPath;
+    this.isDirectoryDialogOpen = false;
+    this.directoryDialogMessage = "";
+    this.cdr.detectChanges();
+  }
+
+  loadDirectoryEntries(path?: string, allowFallback: boolean = false) {
+    if (this.isSelectingDirectory) {
+      return;
+    }
+
+    this.isSelectingDirectory = true;
+    this.directoryDialogMessage = "";
+    this.cdr.detectChanges();
+
+    this.repositoryHttpService.listDirectories(path).subscribe({
+      next: (response) => {
+        this.isSelectingDirectory = false;
+        this.currentDirectoryPath = response.currentPath;
+        this.currentDirectoryParentPath = response.parentPath;
+        this.isCurrentDirectoryRoot = response.isRoot;
+        this.directoryEntries = response.entries;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.isSelectingDirectory = false;
+        if (allowFallback && path) {
+          this.directoryDialogMessage = "Selected path was not found. Showing roots instead.";
+          this.cdr.detectChanges();
+          this.loadDirectoryEntries();
+          return;
+        }
+        this.directoryDialogMessage = "Unable to load directories.";
+        this.cdr.detectChanges();
+      }
     });
+  }
+
+  openDirectory(entry: { name: string; path: string; hasChildren: boolean }) {
+    this.loadDirectoryEntries(entry.path);
+  }
+
+  goUpDirectory() {
+    if (this.isCurrentDirectoryRoot) {
+      return;
+    }
+    if (!this.currentDirectoryParentPath) {
+      this.loadDirectoryEntries();
+      return;
+    }
+    this.loadDirectoryEntries(this.currentDirectoryParentPath);
   }
 
   getRepositories(): void {
@@ -99,6 +187,7 @@ export class RepositoriesComponent {
         this.clearNewRepositoryData();
 
         this.isCloningRespotitory = false;
+        this.isAddRepositoryDialogOpen = false;
         this.cdr.detectChanges()
 
         this.openSnackBar('Repository registered successfully!', 'Close');

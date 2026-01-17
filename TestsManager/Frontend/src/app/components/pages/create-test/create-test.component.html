@@ -1,13 +1,31 @@
 <div class="container">
   <!-- <div class="repositories-header" style="width: 100%;">Record new test</div>
   <div style="font-size: 0.8em; font-weight: normal; width: 100%;">create session and record new test</div> -->
-    <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;" *ngIf="status === TestCreationStatus.SESSION_SETUP">
-        <div style="font-size: 0.8em; font-weight: normal; text-align: center;">
-            Do you want to create a new test recording session?<br>
-            <button mat-raised-button color="primary" (click)="createRecordingSession()">
-              Create Session
+    <div class="session-setup" *ngIf="status === TestCreationStatus.SESSION_SETUP">
+        <div class="session-setup-content">
+            <div class="session-setup-header">Start new recording session</div>
+            <mat-form-field appearance="outline" class="session-setup-field">
+                <mat-label>Repository</mat-label>
+                <mat-select [(ngModel)]="selectedRepositoryId">
+                    <mat-option *ngFor="let repository of repositories; trackBy: trackByRepositoryId" [value]="repository.id">
+                        {{repository.name}}
+                    </mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="session-setup-field">
+                <mat-label>Test name</mat-label>
+                <input matInput [(ngModel)]="testName">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="session-setup-field">
+                <mat-label>Test description</mat-label>
+                <textarea matInput rows="4" [(ngModel)]="testDescription"></textarea>
+            </mat-form-field>
+
+            <button mat-raised-button color="primary" class="session-setup-action" (click)="createRecordingSession()">
+              Start
             </button>
-            <!-- <button mat-flat-button style="background-color: #3f51b5; color: white; " (click)="createRecordingSession()">create session</button> -->
         </div>
     </div>
 

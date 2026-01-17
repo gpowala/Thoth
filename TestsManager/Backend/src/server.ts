@@ -32,6 +32,74 @@ app.use((req, res, next) => {
 const httpContext = new HttpContext('http', os.hostname(), port);
 
 const recordingService = new RecordingService(httpContext);
+type DirectoryEntry = {
+    name: string;
+    path: string;
+    hasChildren: boolean;
+};
+
+type DirectoryListResponse = {
+    currentPath: string;
+    parentPath: string;
+    entries: DirectoryEntry[];
+    isRoot: boolean;
+};
+
+const getWindowsDriveEntries = (): DirectoryEntry[] => {
+    const entries: DirectoryEntry[] = [];
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (const letter of letters) {
+        const drivePath = `${letter}:\\`;
+        if (fs.existsSync(drivePath)) {
+            entries.push({ name: drivePath, path: drivePath, hasChildren: true });
+        }
+    }
+    return entries;
+};
+
+const hasChildDirectory = async (directoryPath: string) => {
+    try {
+        const dirents = await fs.promises.readdir(directoryPath, { withFileTypes: true });
+        return dirents.some((dirent: any) => dirent.isDirectory());
+    } catch (error) {
+        return false;
+    }
+};
+
+const listDirectoryEntries = async (directoryPath: string): Promise<DirectoryListResponse> => {
+    const resolvedPath = path.resolve(directoryPath);
+    const stats = await fs.promises.stat(resolvedPath);
+    if (!stats.isDirectory()) {
+        throw new Error('Path is not a directory.');
+    }
+
+    const dirents = await fs.promises.readdir(resolvedPath, { withFileTypes: true });
+    const directoryEntries = await Promise.all(
+        dirents
+            .filter((dirent: any) => dirent.isDirectory())
+            .map(async (dirent: any) => {
+                const fullPath = path.join(resolvedPath, dirent.name);
+                return {
+                    name: dirent.name,
+                    path: fullPath,
+                    hasChildren: await hasChildDirectory(fullPath)
+                };
+            })
+    );
+
+    directoryEntries.sort((a, b) => a.name.localeCompare(b.name));
+
+    const parsedRoot = path.parse(resolvedPath).root;
+    const isRoot = process.platform !== 'win32' && resolvedPath === parsedRoot;
+    const parentPath = process.platform === 'win32' && resolvedPath === parsedRoot ? '' : path.dirname(resolvedPath);
+
+    return {
+        currentPath: resolvedPath,
+        parentPath: isRoot ? '' : parentPath,
+        entries: directoryEntries,
+        isRoot: isRoot
+    };
+};
 
 app.get('/recording/session/create', (req: Request, res: Response) => {
     const session = recordingService.createSession();
@@ -54,6 +122,24 @@ app.get('/recording/session/stop', (req: Request, res: Response) => {
     const { guid } = req.query;
     recordingService.stopSession(guid as string);
     res.sendStatus(200);
+});
+
+app.get('/recording/session/resume', (req: Request, res: Response) => {
+    const { guid } = req.query;
+    const resumed = recordingService.resumeSession(guid as string);
+    if (resumed) {
+        console.log(`Session ${guid} resumed successfully`);
+        res.sendStatus(200);
+    } else {
+        console.log(`Session ${guid} could not be resumed (not found or not started)`);
+        res.sendStatus(404);
+    }
+});
+
+app.get('/recording/session/is-active', (req: Request, res: Response) => {
+    const { guid } = req.query;
+    const isActive = recordingService.isActive(guid as string);
+    res.json({ isActive });
 });
 
 app.get('/recording/session/update', (req: Request, res: Response) => {
@@ -226,6 +312,35 @@ app.delete('/repository', async (req: Request, res: Response) => {
 app.get('/configuration/default-repositories-directory', async (req: Request, res: Response) => {
     const defaultRepositoryDirectory = path.join(__dirname, '..', '..', 'repositories');
     res.status(200).json({ defaultRepositoryDirectory: defaultRepositoryDirectory });
+});
+
+app.get('/filesystem/list', async (req: Request, res: Response) => {
+    try {
+        const requestedPath = (req.query.path as string | undefined)?.trim();
+        if (!requestedPath) {
+            if (process.platform === 'win32') {
+                return res.status(200).json({
+                    currentPath: '',
+                    parentPath: '',
+                    entries: getWindowsDriveEntries(),
+                    isRoot: true
+                });
+            }
+
+            const rootResponse = await listDirectoryEntries('/');
+            return res.status(200).json({
+                ...rootResponse,
+                isRoot: true,
+                parentPath: ''
+            });
+        }
+
+        const response = await listDirectoryEntries(requestedPath);
+        return res.status(200).json(response);
+    } catch (error) {
+        console.error('Error listing directories:', error);
+        res.status(400).json({ error: 'Failed to list directories.' });
+    }
 });
 
 app.listen(port, () => {

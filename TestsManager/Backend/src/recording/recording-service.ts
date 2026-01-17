@@ -35,6 +35,15 @@ export class RecordingService {
         this.sessions.get(guid)?.stop();
     }
 
+    public resumeSession(guid: string): boolean {
+        const session = this.sessions.get(guid);
+        if (session) {
+            session.resume();
+            return true;
+        }
+        return false;
+    }
+
     public isActive(guid: string): boolean {
         return this.sessions.get(guid)?.isActive() || false;
     }

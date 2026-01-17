@@ -34,4 +34,20 @@ export class RepositoriesHttpService {
   getRepositories(): Observable<Repository[]> {
     return this.http.get<Repository[]>(this.configurationProviderService.backendApiBaseUrl + '/repositories');
   }
+
+  listDirectories(path?: string): Observable<{
+    currentPath: string;
+    parentPath: string;
+    entries: { name: string; path: string; hasChildren: boolean }[];
+    isRoot: boolean;
+  }> {
+    return this.http.get<{
+      currentPath: string;
+      parentPath: string;
+      entries: { name: string; path: string; hasChildren: boolean }[];
+      isRoot: boolean;
+    }>(this.configurationProviderService.backendApiBaseUrl + '/filesystem/list', {
+      params: path ? { path: encodeURIComponent(path) } : {}
+    });
+  }
 }

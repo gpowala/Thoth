@@ -70,7 +70,7 @@
 .repositories-table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 40px;
+  margin-top: 20px;
 }
 
 .table-header {
@@ -130,6 +130,170 @@ button[mat-raised-button]:active {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+}
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.directory-dialog {
+  z-index: 1200;
+}
+
+.dialog-card {
+  background-color: #ffffff;
+  width: 520px;
+  max-width: 90%;
+  border-radius: 12px;
+  padding: 20px 22px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-card-wide {
+  width: 760px;
+}
+
+.dialog-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2b3c74;
+}
+
+.dialog-subtitle {
+  font-size: 13px;
+  color: #5f6b7a;
+  margin-top: 4px;
+}
+
+.dialog-body {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dialog-path-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.dialog-up-button {
+  color: #2b3c74;
+}
+
+.dialog-path {
+  font-size: 12px;
+  color: #4f5b6b;
+  word-break: break-all;
+}
+
+.dialog-list {
+  border: 1px solid #e3e6ee;
+  border-radius: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #f9fbff;
+}
+
+.dialog-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #2b3c74;
+}
+
+.dialog-row:hover {
+  background-color: #eaf1ff;
+}
+
+.dialog-folder-icon {
+  color: #4a70d6;
+}
+
+.dialog-row-name {
+  flex: 1;
+  font-size: 13px;
+}
+
+.dialog-chevron {
+  color: #8aa2d8;
+}
+
+.dialog-empty {
+  font-size: 12px;
+  color: #7a8699;
+  padding: 12px 4px;
+}
+
+.dialog-message {
+  font-size: 12px;
+  color: #c62828;
+  margin-top: 6px;
+}
+
+.dialog-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.add-repo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-field-wide {
+  grid-column: 1 / -1;
+}
+
+.directory-input-inline {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.directory-input-inline input {
+  padding-right: 48px;
+}
+
+.directory-browse-button {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 28px;
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.repositories-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.repositories-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2b3c74;
 }
 
 

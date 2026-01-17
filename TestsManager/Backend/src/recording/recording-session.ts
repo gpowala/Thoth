@@ -48,6 +48,16 @@ export class RecordingSession extends EventEmitter {
         this.invokeSessionStopped();
     }
 
+    public resume(): void {
+        if (!this.isRecording) {
+            this.isRecording = true;
+            console.log(`Session ${this.id} resumed.`);
+            this.invokeSessionResumed();
+        } else {
+            console.log(`Session ${this.id} already active, no resume needed.`);
+        }
+    }
+
     public isActive(): boolean {
         return this.isRecording;
     }
@@ -99,6 +109,10 @@ export class RecordingSession extends EventEmitter {
 
     private invokeSessionStopped(): void {
         console.log('BACKEND_EVENT:SESSION_STOPPED');
+    }
+
+    private invokeSessionResumed(): void {
+        console.log('BACKEND_EVENT:SESSION_RESUMED');
     }
 
     private invokeClickEventRegistered(): void {

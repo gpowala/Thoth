@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, NgZone, AfterViewInit, HostListener, ViewChildren, QueryList, ElementRef, Renderer2, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -31,6 +32,7 @@ export enum TestCreationStatus {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
@@ -50,9 +52,13 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
   processedEvents: IEvent[] = [];
 
   repositories: Repository[] = [];
+  selectedRepositoryId: number | null = null;
+  testName: string = '';
+  testDescription: string = '';
 
   private resizeObserver: ResizeObserver | null = null;
   private mutationObserver: MutationObserver | null = null;
+  private hasSessionStarted = false;
 
   constructor(
     private repositoryHttpService: RepositoriesHttpService,
@@ -66,56 +72,11 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     console.log('Session status:', this.session);
     console.log('Session status:', this.session.status);
 
-    this.recordingSessionService.recordingSessionChanged$.subscribe((session: Session) => {
-      this.session = session;
-      this.cdr.detectChanges();
-    });
-
     this.ngZone.run(() => {
       this.recordingSessionService.recordingSessionChanged$.subscribe((session: Session) => {
         this.session = session;
-        if (this.session.status.isActive) {
-          this.status = TestCreationStatus.SESSION_STARTED;
-        } else {
-          this.status = TestCreationStatus.SESSION_STOPPED;
-        }
-
-        const mappedEvents = session.status.events.map((event: any) => {
-          const data = JSON.parse(event.data);
-          switch (event.type) {
-            case 'click':
-              return new ClickEvent(event.id, event.timestamp, data.x, data.y, data.fullClickViewFilepath, data.minTrimmedClickViewFilepath, data.maxTrimmedClickViewFilepath, data.fullClickViewBase64, data.minTrimmedClickViewBase64, data.maxTrimmedClickViewBase64);
-            case 'keypress':
-              return new KeypressEvent(event.id, event.timestamp, data.keys);
-            case 'area-select':
-              return new AreaSelectEvent(event.id, event.timestamp, data.top, data.bottom, data.left, data.right, data.areaSelectViewFilepath, data.areaSelectViewBase64);
-            default:
-              throw new Error(`Unknown event type: ${event.type}`);
-          }
-        });
-
-        mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
-
-        const processedEvents: IEvent[] = [];
-        let currentKeypressGroup: KeypressEvent[] = [];
-
-        mappedEvents.forEach((event) => {
-          if (event instanceof KeypressEvent) {
-            currentKeypressGroup.push(event);
-          } else {
-            if (currentKeypressGroup.length > 0) {
-              processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
-              currentKeypressGroup = [];
-            }
-            processedEvents.push(event);
-          }
-        });
-
-        if (currentKeypressGroup.length > 0) {
-          processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
-        }
-
-        this.processedEvents = processedEvents;
+        this.updateStatusFromSession(session);
+        this.processSessionEvents(session);
         this.cdr.detectChanges();
       });
     });
@@ -273,8 +234,77 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  trackByRepositoryId(index: number, repository: Repository): number {
+    return repository.id;
+  }
+
   trackByFn(index: number, event: IEvent): string {
     return event.id;
+  }
+
+  private updateStatusFromSession(session: Session): void {
+    if (!session.guid) {
+      this.status = TestCreationStatus.SESSION_SETUP;
+      this.hasSessionStarted = false;
+      return;
+    }
+
+    if (session.status.isActive) {
+      this.hasSessionStarted = true;
+      this.status = TestCreationStatus.SESSION_STARTED;
+      return;
+    }
+
+    if (this.hasSessionStarted) {
+      this.status = TestCreationStatus.SESSION_STOPPED;
+      return;
+    }
+
+    this.status = TestCreationStatus.SESSION_CREATED;
+  }
+
+  private processSessionEvents(session: Session): void {
+    if (!session.guid || session.status.events.length === 0) {
+      this.processedEvents = [];
+      return;
+    }
+
+    const mappedEvents = session.status.events.map((event: any) => {
+      const data = JSON.parse(event.data);
+      switch (event.type) {
+        case 'click':
+          return new ClickEvent(event.id, event.timestamp, data.x, data.y, data.fullClickViewFilepath, data.minTrimmedClickViewFilepath, data.maxTrimmedClickViewFilepath, data.fullClickViewBase64, data.minTrimmedClickViewBase64, data.maxTrimmedClickViewBase64);
+        case 'keypress':
+          return new KeypressEvent(event.id, event.timestamp, data.keys);
+        case 'area-select':
+          return new AreaSelectEvent(event.id, event.timestamp, data.top, data.bottom, data.left, data.right, data.areaSelectViewFilepath, data.areaSelectViewBase64);
+        default:
+          throw new Error(`Unknown event type: ${event.type}`);
+      }
+    });
+
+    mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+
+    const processedEvents: IEvent[] = [];
+    let currentKeypressGroup: KeypressEvent[] = [];
+
+    mappedEvents.forEach((event) => {
+      if (event instanceof KeypressEvent) {
+        currentKeypressGroup.push(event);
+      } else {
+        if (currentKeypressGroup.length > 0) {
+          processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
+          currentKeypressGroup = [];
+        }
+        processedEvents.push(event);
+      }
+    });
+
+    if (currentKeypressGroup.length > 0) {
+      processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
+    }
+
+    this.processedEvents = processedEvents;
   }
 
   private mergeKeypressEvents(keypressEvents: KeypressEvent[]): KeypressEvent {
