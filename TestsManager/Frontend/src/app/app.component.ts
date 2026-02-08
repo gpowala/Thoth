@@ -13,6 +13,11 @@ import { InternalEventsBusService } from './services/internal-events-bus-service
 })
 export class AppComponent {
   title = 'thot-test-manager';
+  navBarExpanded = true;
   
   constructor(private ipcService: ElectronIpcService, private configurationProviderService: ConfigurationProviderService, private internalEventsBusService: InternalEventsBusService) {}
+
+  onNavBarToggled(isExpanded: boolean) {
+    this.navBarExpanded = isExpanded;
+  }
 }

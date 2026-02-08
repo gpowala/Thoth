@@ -12,57 +12,70 @@
   <button mat-button [routerLink]="['/manage-tests']" style="color: #3f51b5;">manage tests</button>
   <button mat-button [routerLink]="['/create-test']" style="color: #3f51b5;">create test</button>
 </mat-toolbar> -->
-<div style="display: flex; justify-content: center; align-items: center;">
-  <button mat-mini-fab class="main-fab-button"><mat-icon>search</mat-icon></button>
-</div>
+<div style="display: flex; flex-direction: column; height: 100vh;">
+  <div style="display: flex; justify-content: center; align-items: center;">
+    <button mat-mini-fab class="main-fab-button"><mat-icon>search</mat-icon></button>
+  </div>
 
-<button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Repositories</button>
-<button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-<!-- <button mat-button [routerLink]="['/scripts']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">code</mat-icon>Create automation script</button>
-<button mat-button [routerLink]="['/manage-tests']" class="main-nav-button">manage tests</button> -->
-<div style="height: calc(100vh - 160px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3f51b5 #c4d7ff; margin-top: 10px;">
-  <div style="padding-right: 8px;">
-    <!-- <mat-tree #tree [dataSource]="dataSource" [childrenAccessor]="childrenAccessor" style="background-color: #c4d7ff; color: #3f51b5;">
-      <mat-tree-node *matTreeNodeDef="let node" style="background-color: #c4d7ff; color: #3f51b5; min-height: 0 !important;">
-        <button mat-button class="main-nav-button">
-          <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">arrow_right</mat-icon>
-          {{node.name}}
-        </button>
-      </mat-tree-node>
-      <mat-tree-node *matTreeNodeDef="let node;when: hasChild" matTreeNodePadding matTreeNodeToggle [cdkTreeNodeTypeaheadLabel]="node.name" style="min-height: 0 !important; margin-top: 10px;">
-        <button mat-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.name" class="main-nav-button">
-          <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">{{tree.isExpanded(node) ? 'expand_more' : 'chevron_right'}}</mat-icon>
-          {{node.name}}
-        </button>
-      </mat-tree-node>
-    </mat-tree> -->
-    <!-- <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-    <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-    <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button> -->
+  <button mat-button [routerLink]="['/repositories']" class="main-nav-button" [class.collapsed]="!isExpanded">
+    <mat-icon [style.margin-right]="isExpanded ? '8px' : '0'">list</mat-icon>
+    <span *ngIf="isExpanded">Repositories</span>
+  </button>
+  <button mat-button [routerLink]="['/create-test']" class="main-nav-button" [class.collapsed]="!isExpanded">
+    <mat-icon [style.margin-right]="isExpanded ? '8px' : '0'">fiber_manual_record</mat-icon>
+    <span *ngIf="isExpanded">Record new test</span>
+  </button>
+  <!-- <button mat-button [routerLink]="['/scripts']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">code</mat-icon>Create automation script</button>
+  <button mat-button [routerLink]="['/manage-tests']" class="main-nav-button">manage tests</button> -->
+  
+  <div style="flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3f51b5 #c4d7ff; margin-top: 10px;">
+    <div style="padding-right: 8px;">
+      <!-- <mat-tree #tree [dataSource]="dataSource" [childrenAccessor]="childrenAccessor" style="background-color: #c4d7ff; color: #3f51b5;">
+        <mat-tree-node *matTreeNodeDef="let node" style="background-color: #c4d7ff; color: #3f51b5; min-height: 0 !important;">
+          <button mat-button class="main-nav-button">
+            <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">arrow_right</mat-icon>
+            {{node.name}}
+          </button>
+        </mat-tree-node>
+        <mat-tree-node *matTreeNodeDef="let node;when: hasChild" matTreeNodePadding matTreeNodeToggle [cdkTreeNodeTypeaheadLabel]="node.name" style="min-height: 0 !important; margin-top: 10px;">
+          <button mat-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.name" class="main-nav-button">
+            <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">{{tree.isExpanded(node) ? 'expand_more' : 'chevron_right'}}</mat-icon>
+            {{node.name}}
+          </button>
+        </mat-tree-node>
+      </mat-tree> -->
+      <!-- <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
+      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
+      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button> -->
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: center; align-items: center; padding: 10px 0;">
+    <button mat-mini-fab class="main-fab-button" (click)="toggleNavBar()" [title]="isExpanded ? 'Collapse' : 'Expand'">
+      <mat-icon>{{ isExpanded ? 'chevron_left' : 'chevron_right' }}</mat-icon>
+    </button>
   </div>
 </div>

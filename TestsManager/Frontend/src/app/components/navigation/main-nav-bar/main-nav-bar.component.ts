@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -41,6 +41,9 @@ const TREE_DATA: FoodNode[] = [
 })
 export class MainNavBarComponent {
   repositories: Repository[] = [];
+  isExpanded: boolean = true;
+  
+  @Output() navBarToggled = new EventEmitter<boolean>();
   
   constructor(public router: Router, private internalEventsBusService: InternalEventsBusService) {
     this.internalEventsBusService.repositoriesChanged$.subscribe(() => {
@@ -53,4 +56,9 @@ export class MainNavBarComponent {
   childrenAccessor = (node: FoodNode) => node.children ?? [];
 
   hasChild = (_: number, node: FoodNode) => !!node.children && node.children.length > 0;
+
+  toggleNavBar() {
+    this.isExpanded = !this.isExpanded;
+    this.navBarToggled.emit(this.isExpanded);
+  }
 }

@@ -38,21 +38,18 @@ export class RecordingSession extends EventEmitter {
         this.isRecording = true;
 
         console.log(`Session ${this.id} started, session directory created: ${this.sessionDirectory}.`);
-        this.invokeSessionStarted();
     }
 
     public stop(): void {
         this.isRecording = false;
 
         console.log(`Session ${this.id} stopped.`);
-        this.invokeSessionStopped();
     }
 
     public resume(): void {
         if (!this.isRecording) {
             this.isRecording = true;
             console.log(`Session ${this.id} resumed.`);
-            this.invokeSessionResumed();
         } else {
             console.log(`Session ${this.id} already active, no resume needed.`);
         }
@@ -86,7 +83,6 @@ export class RecordingSession extends EventEmitter {
             console.log(`Successfully saved click event to ${fullClickViewFilepath} and ${minTrimmedClickViewFilepath} and ${maxTrimmedClickViewFilepath}`);
             
             this.recordedEvents.push(new ClickEvent(new Date(), x, y, fullClickViewFilepath, minTrimmedClickViewFilepath, maxTrimmedClickViewFilepath, clickViewStream.toString('base64'), focusedImage.toString('base64'), croppedImage.toString('base64')));
-            this.invokeClickEventRegistered();
         } catch (error) {
             console.error('Error in registerClickEvent:', error);
             throw error;
@@ -96,35 +92,14 @@ export class RecordingSession extends EventEmitter {
     public async registerKeypressEvent(key: string): Promise<void> {
         try {
             this.recordedEvents.push(new KeypressEvent(new Date(), key));
-            this.invokeKeypressEventRegistered();
         } catch (error) {
             console.error('Error in registerKeypressEvent:', error);
             throw error;
         }
     }
 
-    private invokeSessionStarted(): void {
-        console.log('BACKEND_EVENT:SESSION_STARTED');
-    }
-
-    private invokeSessionStopped(): void {
-        console.log('BACKEND_EVENT:SESSION_STOPPED');
-    }
-
-    private invokeSessionResumed(): void {
-        console.log('BACKEND_EVENT:SESSION_RESUMED');
-    }
-
-    private invokeClickEventRegistered(): void {
-        console.log('BACKEND_EVENT:CLICK_EVENT_REGISTERED');
-    }
-
-    private invokeKeypressEventRegistered(): void {
-        console.log('BACKEND_EVENT:KEYPRESS_EVENT_REGISTERED');
-    }
-
     private createSessionDirectoryIfNotExists(): string {
-        const sessionDirectory = `C:/tests/screenshots/${this.id}`;
+        const sessionDirectory = `C:/tests/recordings/${this.id}`;
 
         if (!fs.existsSync(sessionDirectory)) {
             fs.mkdirSync(sessionDirectory, { recursive: true });
