@@ -4,6 +4,7 @@ import { HttpContext } from '../utils/http-context';
 import { ClickEvent } from './events/click-event';
 import { KeypressEvent } from './events/keypress-event';
 import { AreaSelectEvent } from './events/area-select-event';
+import { TargetMeta } from './events/target-meta';
 
 export class RecordingService {
     private sessions: Map<string, RecordingSession>;
@@ -27,6 +28,19 @@ export class RecordingService {
         }
     }
 
+    public destroyAllSessions(): number {
+        const count = this.sessions.size;
+        this.sessions.forEach(session => {
+            try {
+                session.stop();
+            } catch (error) {
+                console.error('Error stopping session during shutdown:', error);
+            }
+        });
+        this.sessions.clear();
+        return count;
+    }
+
     public startSession(guid: string): void {
         this.sessions.get(guid)?.start();
     }
@@ -48,17 +62,16 @@ export class RecordingService {
         return this.sessions.get(guid)?.isActive() || false;
     }
 
-    public registerClickEvent(guid: string, x: number, y: number, clickViewStream: Buffer): void {
-        this.sessions.get(guid)?.registerClickEvent(x, y, clickViewStream);
+    public registerClickEvent(guid: string, x: number, y: number, clickViewStream: Buffer, target?: TargetMeta): void {
+        this.sessions.get(guid)?.registerClickEvent(x, y, clickViewStream, target);
     }
 
     public registerKeypressEvent(guid: string, key: string): void {
         this.sessions.get(guid)?.registerKeypressEvent(key);
     }
 
-    public registerAreaSelectEvent(guid: string, top: number, bottom: number, left: number, right: number, areaSelectViewStream: Buffer): void {
-        // Assuming RecordingSession has a registerAreaSelectEvent method
-        // this.sessions.get(guid)?.registerAreaSelectEvent(top, bottom, left, right, areaSelectViewStream);
+    public registerAreaSelectEvent(guid: string, top: number, bottom: number, left: number, right: number, areaSelectViewStream: Buffer, dpr: number = 1): void {
+        this.sessions.get(guid)?.registerAreaSelectEvent(top, bottom, left, right, areaSelectViewStream, dpr);
     }
 
     public getRecordedEvents(guid: string): IEvent[] {
@@ -76,7 +89,13 @@ export class RecordingService {
                         maxTrimmedClickViewFilepath: event.maxTrimmedClickViewFilepath,
                         fullClickViewBase64: event.fullClickViewBase64,
                         minTrimmedClickViewBase64: event.minTrimmedClickViewBase64,
-                        maxTrimmedClickViewBase64: event.maxTrimmedClickViewBase64
+                        maxTrimmedClickViewBase64: event.maxTrimmedClickViewBase64,
+                        // Additive DOM/visual metadata (undefined when not captured).
+                        targetKind: event.target?.targetKind,
+                        selectors: event.target?.selectors,
+                        boundingRect: event.target?.boundingRect,
+                        tag: event.target?.tag,
+                        attrs: event.target?.attrs
                     })
                 };
             } else if (event instanceof KeypressEvent) {
@@ -92,14 +111,17 @@ export class RecordingService {
                 return {
                     id: event.id,
                     timestamp: event.timestamp,
-                    type: 'areaSelect',
+                    type: 'area-select',
                     data: JSON.stringify({
                         top: event.top,
                         bottom: event.bottom,
                         left: event.left,
                         right: event.right,
+                        targetKind: event.targetKind,
                         areaSelectViewFilepath: event.areaSelectViewFilepath,
-                        areaSelectViewBase64: event.areaSelectViewBase64
+                        areaSelectViewBase64: event.areaSelectViewBase64,
+                        fullViewFilepath: event.fullViewFilepath,
+                        fullViewBase64: event.fullViewBase64
                     })
                 };
             } else {

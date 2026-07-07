@@ -57,31 +57,35 @@ interface GalleryData {
       display: flex;
       flex-direction: column;
       height: 100%;
-      background-color: #fafafa;
+      background-color: var(--surface-1);
+      color: var(--text-1);
     }
-    
+
     .gallery-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px;
-      border-bottom: 1px solid #eee;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
     }
-    
+
     .gallery-header h2 {
       margin: 0;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-1);
     }
-    
+
     .gallery-content {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      padding: 20px;
+      padding: 24px;
+      background: var(--bg-sunken);
     }
-    
+
     .image-container {
       max-height: 100%;
       max-width: 100%;
@@ -89,48 +93,52 @@ interface GalleryData {
       justify-content: center;
       align-items: center;
     }
-    
+
     .image-container img {
       max-height: 100%;
       max-width: 100%;
       object-fit: contain;
+      border-radius: var(--radius-sm);
     }
-    
+
     .nav-button {
       position: absolute;
-      background-color: rgba(255, 255, 255, 0.7);
+      background-color: var(--surface-3);
+      color: var(--text-1);
       z-index: 2;
     }
-    
+
     .nav-button.prev {
-      left: 10px;
+      left: 12px;
     }
-    
+
     .nav-button.next {
-      right: 10px;
+      right: 12px;
     }
-    
+
     .thumbnails {
       display: flex;
       justify-content: center;
       gap: 10px;
-      padding: 10px;
-      border-top: 1px solid #eee;
+      padding: 12px;
+      border-top: 1px solid var(--border);
       overflow-x: auto;
     }
-    
+
     .thumbnail {
       width: 60px;
       height: 60px;
       border: 2px solid transparent;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: border-color 0.2s;
     }
-    
+
     .thumbnail.active {
-      border-color: #3f51b5;
+      border-color: var(--accent);
     }
-    
+
     .thumbnail img {
       width: 100%;
       height: 100%;

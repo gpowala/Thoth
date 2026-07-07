@@ -1,13 +1,76 @@
-.container {
-    padding: 20px;
+.mt-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
 }
 
-.container h2 {
-    color: #3f51b5;
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 0;
-    letter-spacing: 1px;
-    padding-bottom: 1px;
-    display: inline-block;
+.mt-tabs {
+  min-width: 280px;
+}
+
+.mt-content {
+  margin-top: 8px;
+}
+
+.mt-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 900px;
+}
+
+.mt-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.mt-card-subtitle {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+  margin-bottom: 18px;
+}
+
+.mt-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.mt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 72px 16px;
+  color: var(--text-3);
+  text-align: center;
+  background: var(--surface-1);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.empty-state mat-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  opacity: 0.6;
+}
+
+@media (max-width: 720px) {
+  .mt-form-grid {
+    grid-template-columns: 1fr;
+  }
 }

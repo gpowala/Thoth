@@ -1,0 +1,44 @@
+<div class="page">
+  <div class="page-title">Configuration</div>
+  <div class="page-subtitle">Basic settings for Thot Tests Manager.</div>
+
+  @if (isConfirmOpen) {
+    <div class="dialog-overlay">
+      <div class="dialog-card">
+        <div class="dialog-title">Change database?</div>
+        <div class="dialog-subtitle">
+          Switching the database will end all active recording sessions. This can't be undone.
+        </div>
+        <div class="dialog-actions">
+          <button class="btn btn-ghost" (click)="cancelSave()">Cancel</button>
+          <button class="btn btn-primary" (click)="confirmSave()">End sessions & change</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="config-card">
+    <div class="config-section-title">Database</div>
+    <div class="config-section-hint">
+      Path to the SQLite file where repositories and settings are stored.
+      Changes apply immediately and end any active recording sessions.
+    </div>
+
+    <div class="field">
+      <label>Database file path</label>
+      <input class="input" type="text" [(ngModel)]="databasePath" [disabled]="isSaving"
+        placeholder="C:\path\to\thoth_tests_manager.sqlite">
+    </div>
+
+    <div class="config-actions">
+      <button class="btn btn-ghost" (click)="resetToDefault()" [disabled]="isSaving">Reset to default</button>
+      <button class="btn btn-primary" (click)="requestSave()" [disabled]="isSaving">
+        @if (isSaving) {
+          <mat-spinner diameter="18"></mat-spinner>
+        } @else {
+          <span>Save</span>
+        }
+      </button>
+    </div>
+  </div>
+</div>

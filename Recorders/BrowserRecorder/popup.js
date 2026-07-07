@@ -6,32 +6,38 @@ $(document).ready(() => {
     });
 });
 
+function showError(message) {
+    $("#errorLabel").text(message || '').prop("hidden", !message);
+}
+
 function updateUI(isRecording) {
     if (isRecording) {
         $("#startRecordingBtn").hide();
         $("#stopRecordingBtn").show();
         $("#sessionUrlInput").prop("disabled", true);
         $("#sessionUrlContainer").addClass("disabled");
-        $("#statusLabel").text("Recording in progress...").addClass("recording");
+        $("#statusPill").addClass("recording");
+        $("#statusLabel").text("Recording");
     } else {
         $("#stopRecordingBtn").hide();
         $("#startRecordingBtn").show();
         $("#sessionUrlInput").prop("disabled", false);
         $("#sessionUrlContainer").removeClass("disabled");
-        $("#statusLabel").text("").removeClass("recording");
+        $("#statusPill").removeClass("recording");
+        $("#statusLabel").text("Idle");
     }
 }
 
 $("#startRecordingBtn").click(() => {
     const sessionUrl = $("#sessionUrlInput").val().trim();
-    
+
     if (!sessionUrl) {
-        $("#statusLabel").text("Please enter a session URL").addClass("error");
+        showError("Please enter a session URL");
         return;
     }
-    
-    $("#statusLabel").removeClass("error");
-    
+
+    showError("");
+
     chrome.runtime.sendMessage({
         action: "tests-recorder-start-recording",
         serverUrl: sessionUrl
@@ -42,18 +48,18 @@ $("#startRecordingBtn").click(() => {
         'serverUrl': sessionUrl,
         'isRecording': true
     });
-    
+
     updateUI(true);
 });
 
 $("#stopRecordingBtn").click(() => {
     chrome.runtime.sendMessage({action: "tests-recorder-stop-recording"});
-    
+
     // Store in chrome.storage.local to sync with background script
     chrome.storage.local.set({
         'isRecording': false
     });
-    
+
     updateUI(false);
 });
 
@@ -63,7 +69,7 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
         if (changes.isRecording) {
             updateUI(changes.isRecording.newValue === true);
         }
-        
+
         if (changes.serverUrl) {
             $("#sessionUrlInput").val(changes.serverUrl.newValue || '');
         }

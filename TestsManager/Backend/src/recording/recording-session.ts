@@ -5,19 +5,31 @@ import { EventEmitter } from 'events';
 import { IEvent } from './events/event-interface';
 import { HttpContext } from '../utils/http-context';
 import { ClickEvent } from './events/click-event';
-import { trimClickEventView } from '../utils/image-helpers';
+import { trimClickEventView, extractRegion } from '../utils/image-helpers';
 import { KeypressEvent } from './events/keypress-event';
+import { AreaSelectEvent } from './events/area-select-event';
+import { TargetMeta } from './events/target-meta';
+
+// How long to wait after the last keystroke before finalizing a typing group
+// into a single step. Any non-keypress event also flushes the group immediately.
+const KEYPRESS_FLUSH_MS = 1200;
 
 export class RecordingSession extends EventEmitter {
     public id: string;
 
     public isRecording: boolean;
     public recordedEvents: IEvent[];
-    
+
     public sessionDirectory: string;
 
     private httpContext: HttpContext;
-    
+
+    // Buffer for the in-progress typing group. Nothing is pushed to
+    // recordedEvents until the group is finalized, so recordedEvents stays
+    // append-only (the frontend polls it incrementally by index).
+    private pendingKeypress: { keys: string; timestamp: Date } | null = null;
+    private keypressFlushTimer: NodeJS.Timeout | null = null;
+
     constructor(
         httpContext: HttpContext
     ) {
@@ -42,6 +54,8 @@ export class RecordingSession extends EventEmitter {
 
     public stop(): void {
         this.isRecording = false;
+        // Finalize any typing still buffered so it is not lost on stop.
+        this.flushPendingKeypress();
 
         console.log(`Session ${this.id} stopped.`);
     }
@@ -59,7 +73,9 @@ export class RecordingSession extends EventEmitter {
         return this.isRecording;
     }
 
-    public async registerClickEvent(x: number, y: number, clickViewStream: Buffer): Promise<void> {
+    public async registerClickEvent(x: number, y: number, clickViewStream: Buffer, target?: TargetMeta): Promise<void> {
+        // A click ends any in-progress typing group.
+        this.flushPendingKeypress();
         try {
             const focusedImage = await trimClickEventView(clickViewStream, x, y, 100);
             const croppedImage = await trimClickEventView(clickViewStream, x, y, 300);
@@ -67,34 +83,114 @@ export class RecordingSession extends EventEmitter {
             const fullClickViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-click-event-full.png`;
             const minTrimmedClickViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-click-event-min-trim.png`;
             const maxTrimmedClickViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-click-event-max-trim.png`;
-            
+
             if (!this.sessionDirectory || !fs.existsSync(this.sessionDirectory)) {
                 throw new Error(`Session directory does not exist: ${this.sessionDirectory}`);
             }
-            
+
             await sharp(clickViewStream).toFile(fullClickViewFilepath);
             await sharp(focusedImage).toFile(minTrimmedClickViewFilepath);
             await sharp(croppedImage).toFile(maxTrimmedClickViewFilepath);
-            
+
             if (!fs.existsSync(fullClickViewFilepath) || !fs.existsSync(minTrimmedClickViewFilepath) || !fs.existsSync(maxTrimmedClickViewFilepath)) {
                 throw new Error(`Failed to create click event files: ${fullClickViewFilepath}, ${minTrimmedClickViewFilepath}, ${maxTrimmedClickViewFilepath}`);
             }
-            
+
             console.log(`Successfully saved click event to ${fullClickViewFilepath} and ${minTrimmedClickViewFilepath} and ${maxTrimmedClickViewFilepath}`);
-            
-            this.recordedEvents.push(new ClickEvent(new Date(), x, y, fullClickViewFilepath, minTrimmedClickViewFilepath, maxTrimmedClickViewFilepath, clickViewStream.toString('base64'), focusedImage.toString('base64'), croppedImage.toString('base64')));
+
+            this.recordedEvents.push(new ClickEvent(new Date(), x, y, fullClickViewFilepath, minTrimmedClickViewFilepath, maxTrimmedClickViewFilepath, clickViewStream.toString('base64'), focusedImage.toString('base64'), croppedImage.toString('base64'), target));
         } catch (error) {
             console.error('Error in registerClickEvent:', error);
             throw error;
         }
     }
 
+    public async registerAreaSelectEvent(top: number, bottom: number, left: number, right: number, areaSelectViewStream: Buffer, dpr: number = 1): Promise<void> {
+        // An area selection ends any in-progress typing group.
+        this.flushPendingKeypress();
+        try {
+            if (!this.sessionDirectory || !fs.existsSync(this.sessionDirectory)) {
+                throw new Error(`Session directory does not exist: ${this.sessionDirectory}`);
+            }
+
+            // Overlay rect is in CSS px; the screenshot is in device px. Scale to
+            // match the screenshot's pixel space before cropping the region.
+            const regionImage = await extractRegion(
+                areaSelectViewStream,
+                left * dpr,
+                top * dpr,
+                right * dpr,
+                bottom * dpr
+            );
+
+            const fullViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-area-select-full.png`;
+            const areaSelectViewFilepath = `${this.sessionDirectory}/${this.recordedEvents.length}-area-select-region.png`;
+
+            await sharp(areaSelectViewStream).toFile(fullViewFilepath);
+            await sharp(regionImage).toFile(areaSelectViewFilepath);
+
+            this.recordedEvents.push(new AreaSelectEvent(
+                new Date(),
+                top, bottom, left, right,
+                areaSelectViewFilepath,
+                regionImage.toString('base64'),
+                fullViewFilepath,
+                areaSelectViewStream.toString('base64')
+            ));
+
+            console.log(`Successfully saved area-select event to ${fullViewFilepath} and ${areaSelectViewFilepath}`);
+        } catch (error) {
+            console.error('Error in registerAreaSelectEvent:', error);
+            throw error;
+        }
+    }
+
     public async registerKeypressEvent(key: string): Promise<void> {
         try {
-            this.recordedEvents.push(new KeypressEvent(new Date(), key));
+            if (this.isActionKey(key)) {
+                // Named action key (e.g. Enter as submit, Tab, Escape) — a discrete
+                // step, not part of the typed text. Ends the current typing group.
+                this.flushPendingKeypress();
+                this.recordedEvents.push(new KeypressEvent(new Date(), `[${key}]`));
+                return;
+            }
+            // Printable character (including the "\n" that Enter-in-a-textarea was
+            // translated to) — folded into the current typing group.
+            if (this.pendingKeypress) {
+                this.pendingKeypress.keys += key;
+            } else {
+                this.pendingKeypress = { keys: key, timestamp: new Date() };
+            }
+            this.scheduleKeypressFlush();
         } catch (error) {
             console.error('Error in registerKeypressEvent:', error);
             throw error;
+        }
+    }
+
+    // Single printable characters (and the newline we fold Enter into inside
+    // multiline fields) are text; multi-character key names are discrete actions.
+    private isActionKey(key: string): boolean {
+        return typeof key === 'string' && key.length > 1;
+    }
+
+    // (Re)arm the idle timer that finalizes a typing group after a pause.
+    private scheduleKeypressFlush(): void {
+        if (this.keypressFlushTimer) {
+            clearTimeout(this.keypressFlushTimer);
+        }
+        this.keypressFlushTimer = setTimeout(() => this.flushPendingKeypress(), KEYPRESS_FLUSH_MS);
+    }
+
+    // Finalize the buffered typing group as a single immutable KeypressEvent.
+    private flushPendingKeypress(): void {
+        if (this.keypressFlushTimer) {
+            clearTimeout(this.keypressFlushTimer);
+            this.keypressFlushTimer = null;
+        }
+        if (this.pendingKeypress) {
+            this.recordedEvents.push(new KeypressEvent(this.pendingKeypress.timestamp, this.pendingKeypress.keys));
+            this.pendingKeypress = null;
         }
     }
 

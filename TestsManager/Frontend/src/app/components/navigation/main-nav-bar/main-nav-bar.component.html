@@ -1,81 +1,95 @@
-<!-- <mat-toolbar style="background-color: #c4d7ff; color: #3f51b5;">
-  <span style="font-size: 0.7em; font-weight: bold;">
-    Thot Tests Manager
-    <ng-container *ngIf="router.url.includes('repositories')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>repositories</ng-container>
-    <ng-container *ngIf="router.url.includes('scripts')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>scripts</ng-container>
-    <ng-container *ngIf="router.url.includes('manage-tests')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>manage tests</ng-container>
-    <ng-container *ngIf="router.url.includes('create-test')"><span style="font-size: 1.4em; font-weight: bold; padding-left: 5px; padding-right: 3px;"> / </span>create test</ng-container>
-  </span>
-  <span class="spacer" style="flex-grow: 1;"></span>
-  <button mat-button [routerLink]="['/repositories']" style="color: #3f51b5;">repositories</button>
-  <button mat-button [routerLink]="['/scripts']" style="color: #3f51b5;">scripts</button>
-  <button mat-button [routerLink]="['/manage-tests']" style="color: #3f51b5;">manage tests</button>
-  <button mat-button [routerLink]="['/create-test']" style="color: #3f51b5;">create test</button>
-</mat-toolbar> -->
-<div style="display: flex; flex-direction: column; height: 100vh;">
-  <div style="display: flex; justify-content: center; align-items: center;">
-    <button mat-mini-fab class="main-fab-button"><mat-icon>search</mat-icon></button>
-  </div>
-
-  <button mat-button [routerLink]="['/repositories']" class="main-nav-button" [class.collapsed]="!isExpanded">
-    <mat-icon [style.margin-right]="isExpanded ? '8px' : '0'">list</mat-icon>
-    <span *ngIf="isExpanded">Repositories</span>
-  </button>
-  <button mat-button [routerLink]="['/create-test']" class="main-nav-button" [class.collapsed]="!isExpanded">
-    <mat-icon [style.margin-right]="isExpanded ? '8px' : '0'">fiber_manual_record</mat-icon>
-    <span *ngIf="isExpanded">Record new test</span>
-  </button>
-  <!-- <button mat-button [routerLink]="['/scripts']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">code</mat-icon>Create automation script</button>
-  <button mat-button [routerLink]="['/manage-tests']" class="main-nav-button">manage tests</button> -->
-  
-  <div style="flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3f51b5 #c4d7ff; margin-top: 10px;">
-    <div style="padding-right: 8px;">
-      <!-- <mat-tree #tree [dataSource]="dataSource" [childrenAccessor]="childrenAccessor" style="background-color: #c4d7ff; color: #3f51b5;">
-        <mat-tree-node *matTreeNodeDef="let node" style="background-color: #c4d7ff; color: #3f51b5; min-height: 0 !important;">
-          <button mat-button class="main-nav-button">
-            <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">arrow_right</mat-icon>
-            {{node.name}}
-          </button>
-        </mat-tree-node>
-        <mat-tree-node *matTreeNodeDef="let node;when: hasChild" matTreeNodePadding matTreeNodeToggle [cdkTreeNodeTypeaheadLabel]="node.name" style="min-height: 0 !important; margin-top: 10px;">
-          <button mat-button matTreeNodeToggle [attr.aria-label]="'Toggle ' + node.name" class="main-nav-button">
-            <mat-icon class="mat-icon-rtl-mirror" style="vertical-align: text-top; margin-right: 8px;  min-height: 0;">{{tree.isExpanded(node) ? 'expand_more' : 'chevron_right'}}</mat-icon>
-            {{node.name}}
-          </button>
-        </mat-tree-node>
-      </mat-tree> -->
-      <!-- <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button>
-      <button mat-button [routerLink]="['/repositories']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">list</mat-icon>Add tests repository</button>
-      <button mat-button [routerLink]="['/create-test']" class="main-nav-button"><mat-icon style="vertical-align: text-top; margin-right: 8px;">fiber_manual_record</mat-icon>Record new test</button> -->
+<nav class="nav" [class.collapsed]="!isExpanded">
+  <div class="nav-brand">
+    <div class="nav-brand-mark">
+      <mat-icon>bug_report</mat-icon>
     </div>
+    @if (isExpanded) {
+      <div class="nav-brand-text">
+        <span class="nav-brand-title">Thot</span>
+        <span class="nav-brand-sub">Tests Manager</span>
+      </div>
+    }
   </div>
 
-  <div style="display: flex; justify-content: center; align-items: center; padding: 10px 0;">
-    <button mat-mini-fab class="main-fab-button" (click)="toggleNavBar()" [title]="isExpanded ? 'Collapse' : 'Expand'">
+  <div class="nav-scroll">
+    <div class="nav-items">
+      <a
+        [routerLink]="['/repositories']"
+        routerLinkActive="active"
+        class="nav-item"
+        [title]="isExpanded ? '' : 'Repositories'"
+      >
+        <mat-icon>folder_open</mat-icon>
+        @if (isExpanded) {
+          <span>Repositories</span>
+        }
+      </a>
+
+      <a
+        [routerLink]="['/create-test']"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="nav-item"
+        [title]="isExpanded ? '' : 'Record new test'"
+      >
+        <mat-icon>radio_button_checked</mat-icon>
+        @if (isExpanded) {
+          <span>Record new test</span>
+        }
+      </a>
+    </div>
+
+    @if ((sessions$ | async); as sessions) {
+      @if (sessions.length > 0) {
+        <div class="nav-section">
+          @if (isExpanded) {
+            <div class="nav-section-title">Sessions</div>
+          } @else {
+            <div class="nav-divider"></div>
+          }
+
+          @for (session of sessions; track session.guid) {
+            <a
+              [routerLink]="['/create-test', session.guid]"
+              routerLinkActive="active"
+              class="nav-item nav-session"
+              [title]="isExpanded ? '' : session.name + ' — ' + sessionStateLabel(session)"
+            >
+              <span class="session-dot" [ngClass]="sessionState(session)"></span>
+              @if (isExpanded) {
+                <span class="nav-session-body">
+                  <span class="nav-session-name">{{ session.name }}</span>
+                  <span class="nav-session-state">{{ sessionStateLabel(session) }}</span>
+                </span>
+              }
+            </a>
+          }
+        </div>
+      }
+    }
+  </div>
+
+  <div class="nav-bottom">
+    <a
+      [routerLink]="['/configuration']"
+      routerLinkActive="active"
+      class="nav-item"
+      [title]="isExpanded ? '' : 'Configuration'"
+    >
+      <mat-icon>settings</mat-icon>
+      @if (isExpanded) {
+        <span>Configuration</span>
+      }
+    </a>
+  </div>
+
+  <div class="nav-footer">
+    <button
+      class="nav-toggle"
+      (click)="toggleNavBar()"
+      [title]="isExpanded ? 'Collapse' : 'Expand'"
+    >
       <mat-icon>{{ isExpanded ? 'chevron_left' : 'chevron_right' }}</mat-icon>
     </button>
   </div>
-</div>
+</nav>

@@ -1,395 +1,168 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+:host {
+  display: block;
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #333;
-    background-color: #f0f2f5;
-    padding: 20px;
-}
-
-.container {
-    max-width: 1400px;
-    margin: 0 auto;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #2c3e50;
-}
-
-.test-sequence {
-    margin-bottom: 30px;
-}
-
-.sequence-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #e1e4e8;
-}
-
-.sequence-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #2c3e50;
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-}
-
-.edit-title-button {
-    opacity: 0;
-    visibility: hidden;
-    margin-left: 8px;
-    width: 24px;
-    height: 24px;
-    background-color: #3498db;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.edit-title-button svg {
-    width: 14px;
-    height: 14px;
-}
-
-.sequence-title:hover .edit-title-button {
-    opacity: 1;
-    visibility: visible;
-}
-
-.edit-title-button:hover {
-    background-color: #2980b9;
-    transform: scale(1.1);
-}
-
-.sequence-title-input {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #2c3e50;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid #3498db;
-    outline: none;
-    padding: 0;
-    margin: 0;
-    width: auto;
-    min-width: 150px;
-}
-
-.sequence-stats {
-    display: flex;
-    gap: 10px;
-    font-size: 0.85rem;
-}
-
-.stat {
-    padding: 3px 8px;
-    border-radius: 4px;
-}
-
-.stat-passed {
-    background: #e6f7e9;
-    color: #2ecc71;
-}
-
-.stat-failed {
-    background: #fceaea;
-    color: #e74c3c;
-}
-
-.stat-skipped {
-    background: #fef9e7;
-    color: #f39c12;
-}
-
-/* Modified steps container for connected steps */
-.steps-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 25px;
-    position: relative;
-}
-
-/* Step cards with connectors */
 .step-card {
-    background: white;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    position: relative;
-    width: calc(25% - 25px);
-    min-width: 220px;
-    margin-bottom: 15px;
-    pointer-events: auto;
-}
-
-/* Add button styles */
-.step-card {
-    position: relative;
-}
-
-.add-step-button {
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    background-color: #3498db;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 20px;
-    font-weight: bold;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.3s ease, transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-    z-index: 10;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    border: 2px solid white;
-    pointer-events: auto;
-    padding: 0; /* Reset padding */
-}
-
-.add-step-button span {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    line-height: 0;
-    position: relative;
-    top: -1px; /* Fine-tune vertical alignment */
-}
-
-.add-step-button.left {
-    left: -14px;
-    top: 50%;
-    transform: translateY(-50%) scale(0.9);
-}
-
-.add-step-button.right {
-    right: -14px;
-    top: 50%;
-    transform: translateY(-50%) scale(0.9);
-}
-
-.step-card:hover .add-step-button {
-    opacity: 1;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 6px rgba(52, 152, 219, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(52, 152, 219, 0);
-    }
-}
-
-.add-step-button:hover {
-    background-color: #2980b9;
-    transform: translateY(-50%) scale(1.1);
-    animation: none;
-    box-shadow: 0 0 8px rgba(52, 152, 219, 0.8);
-}
-
-/* Hide connector line when wrapping to new row */
-@media (max-width: 1200px) {
-    .step-card {
-        width: calc(33.33% - 25px);
-    }
-}
-
-@media (max-width: 900px) {
-    .step-card {
-        width: calc(50% - 25px);
-    }
-}
-
-@media (max-width: 600px) {
-    .step-card {
-        width: 100%;
-    }
+  position: relative;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .step-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-2);
+  border-color: var(--border-strong);
+}
+
+/* Add-step affordances */
+.add-step-button {
+  position: absolute;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: 2px solid var(--surface-1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0;
+  z-index: 10;
+  transition: opacity 0.25s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+.add-step-button.left {
+  left: -14px;
+  transform: translateY(-50%) scale(0.9);
+}
+
+.add-step-button.right {
+  right: -14px;
+  transform: translateY(-50%) scale(0.9);
+}
+
+.step-card:hover .add-step-button {
+  opacity: 1;
+}
+
+.add-step-button:hover {
+  background: var(--accent-hover);
+}
+
+.add-step-button span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 .step-header {
-    padding: 8px 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #f8f9fa;
-    border-bottom: 1px solid #eaeaea;
-    overflow: hidden;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 
 .step-title {
-    font-size: 0.85rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
 }
 
 .step-number {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    background: #3498db;
-    color: white;
-    border-radius: 50%;
-    margin-right: 8px;
-    font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-radius: 50%;
+  margin-right: 10px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .step-status {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
 
-.status-passed {
-    background: #2ecc71;
-}
-
-.status-failed {
-    background: #e74c3c;
-}
-
-.status-skipped {
-    background: #f39c12;
-}
+.status-passed { background: var(--success); }
+.status-failed { background: var(--danger); }
+.status-skipped { background: var(--warning); }
 
 .step-content {
-    padding: 10px;
-    overflow: hidden;
+  padding: 14px;
 }
 
 .step-description {
-    font-size: 0.8rem;
-    color: #666;
-    margin-bottom: 8px;
-    min-height: 2.4rem;
+  font-size: 12.5px;
+  color: var(--text-2);
+  margin: 0 0 8px;
 }
 
 .screenshots-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 
 .screenshot {
-    position: relative;
-    border-radius: 4px;
-    overflow: hidden;
-    border: 1px solid #eee;
-    aspect-ratio: 4/3;
-    z-index: 1;
-    transition: z-index 0.01s linear;
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  aspect-ratio: 4 / 3;
+  z-index: 1;
 }
 
 .screenshot:hover {
-    z-index: 10;
+  z-index: 10;
 }
 
 .screenshot img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
 }
 
 .screenshot:hover img {
-    transform: scale(1.8);
+  transform: scale(1.8);
 }
 
 .screenshot-label {
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    color: white;
-    padding: 1px 5px;
-    border-radius: 3px;
-    font-size: 0.65rem;
-    font-weight: 500;
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  color: #fff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
 }
 
-.label-full {
-    background: rgba(52, 152, 219, 0.8);
-}
+.label-full { background: rgba(34, 211, 238, 0.85); }
+.label-medium { background: rgba(55, 211, 153, 0.85); }
+.label-focused { background: rgba(190, 130, 255, 0.85); }
 
-.label-medium {
-    background: rgba(46, 204, 113, 0.8);
-}
-
-.label-focused {
-    background: rgba(155, 89, 182, 0.8);
-}
-
-/* Controls */
-.controls {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-}
-
-.filter-button {
-    margin: 0 5px;
-    padding: 6px 12px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.filter-button:hover {
-    background: #f8f9fa;
-}
-
-.filter-button.active {
-    background: #3498db;
-    color: white;
-    border-color: #3498db;
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-    .steps-container {
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    }
-    
-    .sequence-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .sequence-stats {
-        margin-top: 8px;
-    }
+.step-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-3);
 }

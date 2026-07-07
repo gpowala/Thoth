@@ -1,18 +1,16 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { Repository } from '../../../models/repository';
 import { RepositoriesHttpService } from '../../../services/repositories-http-service';
 
 @Component({
   selector: 'app-manage-tests',
   standalone: true,
-  imports: [CommonModule, MatTabsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatCardModule, MatSelectModule],
+  imports: [MatTabsModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatIconModule],
   templateUrl: './manage-tests.component.html',
   styleUrl: './manage-tests.component.css'
 })

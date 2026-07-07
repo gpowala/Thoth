@@ -1,163 +1,157 @@
 <div class="container">
-  <!-- <div class="repositories-header" style="width: 100%;">Record new test</div>
-  <div style="font-size: 0.8em; font-weight: normal; width: 100%;">create session and record new test</div> -->
-    <div class="session-setup" *ngIf="status === TestCreationStatus.SESSION_SETUP">
+  @switch (status) {
+    <!-- Session setup -->
+    @case (TestCreationStatus.SESSION_SETUP) {
+      <div class="session-setup">
         <div class="session-setup-content">
-            <div class="session-setup-header">Start new recording session</div>
-            <mat-form-field appearance="outline" class="session-setup-field">
-                <mat-label>Repository</mat-label>
-                <mat-select [(ngModel)]="selectedRepositoryId">
-                    <mat-option *ngFor="let repository of repositories; trackBy: trackByRepositoryId" [value]="repository.id">
-                        {{repository.name}}
-                    </mat-option>
-                </mat-select>
-            </mat-form-field>
+          <div class="session-setup-header">Start a new recording session</div>
+          <p class="session-setup-hint">Pick a repository and describe the test you're about to record.</p>
 
-            <mat-form-field appearance="outline" class="session-setup-field">
-                <mat-label>Test name</mat-label>
-                <input matInput [(ngModel)]="testName">
-            </mat-form-field>
+          <mat-form-field appearance="outline" class="session-setup-field">
+            <mat-label>Repository</mat-label>
+            <mat-select [(ngModel)]="selectedRepositoryId">
+              @for (repository of repositories; track repository.id) {
+                <mat-option [value]="repository.id">{{ repository.name }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
 
-            <mat-form-field appearance="outline" class="session-setup-field">
-                <mat-label>Test description</mat-label>
-                <textarea matInput rows="4" [(ngModel)]="testDescription"></textarea>
-            </mat-form-field>
+          <mat-form-field appearance="outline" class="session-setup-field">
+            <mat-label>Test name</mat-label>
+            <input matInput [(ngModel)]="testName">
+          </mat-form-field>
 
-            <button mat-raised-button color="primary" class="session-setup-action" (click)="createRecordingSession()">
-              Start
+          <mat-form-field appearance="outline" class="session-setup-field">
+            <mat-label>Test description</mat-label>
+            <textarea matInput rows="4" [(ngModel)]="testDescription"></textarea>
+          </mat-form-field>
+
+          <button class="btn btn-primary session-setup-action" (click)="createRecordingSession()">
+            <mat-icon>fiber_manual_record</mat-icon>
+            Start
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Session created — connection link -->
+    @case (TestCreationStatus.SESSION_CREATED) {
+      <div class="session-created">
+        <div class="session-created-card">
+          <mat-icon class="session-created-icon">link</mat-icon>
+          <div class="session-created-title">Session ready</div>
+          <p class="session-created-hint">Connect to this session using the link below.</p>
+          <div class="session-link-row">
+            <input #linkInput class="input" type="text" [value]="session.url" readonly>
+            <button class="icon-btn" [class.copied]="linkCopied" (click)="copyLink(linkInput)"
+              [title]="linkCopied ? 'Copied!' : 'Copy link'">
+              <mat-icon>{{ linkCopied ? 'check' : 'content_copy' }}</mat-icon>
             </button>
+          </div>
+          @if (linkCopied) {
+            <div class="session-link-copied">Link copied to clipboard</div>
+          }
         </div>
-    </div>
+      </div>
+    }
 
-    <div style="height: calc(100vh - 40px); display: flex; justify-content: center; align-items: center;" *ngIf="status === TestCreationStatus.SESSION_CREATED">
-        <div style="font-size: 0.8em; font-weight: normal; text-align: center;">
-            Connect to session using the following link:<br>
-            <div style="display: flex; gap: 10px; align-items: center;"><input type="text" [value]="session.url" style="flex: 1;"><button mat-mini-fab class="main-fab-button" color="primary"><mat-icon>content_copy</mat-icon></button></div>
-            <!-- <button mat-flat-button style="background-color: #3f51b5; color: white; " (click)="createRecordingSession()">create session</button> -->
-        </div>
-    </div>
-    <!-- <mat-card *ngFor="let event of events; trackBy: trackByFn" style="margin-top: 20px; margin-bottom: 10px;" appearance="outlined" class="mat-elevation-z8">
-        <mat-card-content>
-            <div>
-                <div style="font-size: 0.8em; font-weight: normal;">
-                    <div [ngSwitch]="event.type">
-                        <div *ngSwitchCase="'click'">
-                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                <div style="flex: 1;">
-                                    <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                                        Event Type: {{event.type}} | Timestamp: {{event.timestamp | date:'medium'}} | Coordinates: ({{($any(event)).x}}, {{$any(event).y}})
-                                    </div>
-                                </div>
-                                <div class="image-preview-container" data-event-type="click">
-                                    <button mat-button (click)="openGallery($any(event))" class="gallery-button">
-                                        <mat-icon style="vertical-align: text-top; margin-right: 8px;">photo_library</mat-icon>
-                                        View Screenshots
-                                    </button>
-                                    <div class="hover-preview">
-                                        <div class="preview-grid">
-                                            <img [src]="'data:image/png;base64,' + ($any(event)).fullClickViewBase64" alt="Full View">
-                                            <img [src]="'data:image/png;base64,' + ($any(event)).maxTrimmedClickViewBase64" alt="Max Trimmed">
-                                            <img [src]="'data:image/png;base64,' + ($any(event)).minTrimmedClickViewBase64" alt="Min Trimmed">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div *ngSwitchCase="'keypress'">
-                            <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                                Event Type: {{event.type}} | Timestamp: {{event.timestamp | date:'medium'}} | Keys: {{($any(event)).keys}}
-                            </div>
-                        </div>
-                        <div *ngSwitchCase="'area-select'">
-                            <div style="display: flex; align-items: center; gap: 20px;">
-                                <div class="image-preview-container" data-event-type="area-select">
-                                    <button mat-flat-button color="primary" class="gallery-button" (click)="openAreaGallery($any(event))">
-                                        <mat-icon>crop</mat-icon>
-                                        View Area Selection
-                                    </button>
-                                    <div class="hover-preview">
-                                        <img [src]="'data:image/png;base64,' + ($any(event)).areaSelectViewBase64" alt="Area Selection">
-                                    </div>
-                                </div>
-                                <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
-                                    Event Type: {{event.type}} | Timestamp: {{event.timestamp | date:'medium'}} | Area: ({{($any(event)).left}}, {{($any(event)).top}}) to ({{($any(event)).right}}, {{($any(event)).bottom}})
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <!-- Recording in progress / stopped -->
+    @default {
+      <div class="recording">
+        <div class="recording-toolbar">
+          <div class="recording-heading">
+            <div class="recording-title">{{ session.name }}</div>
+            <div class="session-status" [class.active]="session.status.isActive">
+              <span class="status-dot"></span>
+              {{ session.status.isActive ? 'Recording active' : 'Session inactive' }}
             </div>
-        </mat-card-content>
-    </mat-card> -->
-    <div style="width: 100%; margin-top: 20px;" *ngIf="status === TestCreationStatus.SESSION_STARTED || status === TestCreationStatus.SESSION_STOPPED">
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-            <div class="controls">Session Status: {{session.status.isActive ? 'Active' : 'Inactive'}}</div>
-            <div class="controls">
-                <button mat-raised-button color="primary">
-                    Stop Session
-                </button>
-            </div>
-        </div>
-        <div class="controls">
-            <button class="filter-button active">All Steps</button>
-            <button class="filter-button">Recorded Only</button>
-            <button class="filter-button">Gherkin Only</button>
-            <button class="filter-button">Scripts Only</button>
+          </div>
+          <button class="btn btn-primary" (click)="stopSession()" [disabled]="!session.status.isActive">
+            <mat-icon>stop</mat-icon>
+            Stop session
+          </button>
         </div>
 
-        <!-- Login Flow Sequence -->
-        <div class="test-sequence">
-            <!-- <div class="sequence-header">
-                <div class="sequence-title">Login Flow
-                    <div class="edit-title-button" title="Edit title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                        </svg>
+        <div class="filter-bar">
+          <button class="filter-button active">All steps</button>
+          <button class="filter-button">Recorded only</button>
+          <button class="filter-button">Gherkin only</button>
+          <button class="filter-button">Scripts only</button>
+        </div>
+
+        <div class="flow" #flow>
+          <svg class="flow-svg" [attr.width]="flowWidth" [attr.height]="flowHeight">
+            <path class="flow-path" [attr.d]="flowPath"></path>
+          </svg>
+          <div class="steps-container">
+          @for (event of processedEvents; track event.id) {
+            <div class="step-card">
+              <button type="button" class="add-step-button left" (click)="addStepBefore($index)" title="Add step before">
+                <span>+</span>
+              </button>
+              <button type="button" class="add-step-button right" (click)="addStepAfter($index)" title="Add step after">
+                <span>+</span>
+              </button>
+              <div class="step-header">
+                <!-- Hovering (or focusing) the title reveals the full captured envelope. -->
+                <div class="step-title" tabindex="0">
+                  <span class="step-number">{{ $index + 1 }}</span>
+                  {{ eventTitle(event) }}
+                  @if (eventModality(event); as kind) {
+                    <span class="modality-badge" [ngClass]="'modality-' + kind">{{ kind }}</span>
+                  }
+                  <div class="event-envelope" role="tooltip">
+                    <div class="event-envelope-title">Captured envelope</div>
+                    <pre class="event-envelope-body">{{ eventEnvelope(event) | json }}</pre>
+                  </div>
+                </div>
+                <span class="step-status status-passed"></span>
+              </div>
+              <div class="step-content">
+                @switch (event.type) {
+                  @case ('click') {
+                    <p class="step-description">{{ event.timestamp | date:'medium' }}</p>
+                    <p class="step-description">Coordinates: ({{ $any(event).x }}, {{ $any(event).y }})</p>
+                    <div class="screenshots-grid">
+                      <div class="screenshot">
+                        <img [src]="'data:image/png;base64,' + $any(event).fullClickViewBase64" alt="Full view">
+                        <div class="screenshot-label label-full">Full</div>
+                      </div>
+                      <div class="screenshot">
+                        <img [src]="'data:image/png;base64,' + $any(event).maxTrimmedClickViewBase64" alt="Cropped view">
+                        <div class="screenshot-label label-medium">Cropped</div>
+                      </div>
+                      <div class="screenshot">
+                        <img [src]="'data:image/png;base64,' + $any(event).minTrimmedClickViewBase64" alt="Focused view">
+                        <div class="screenshot-label label-focused">Focused</div>
+                      </div>
                     </div>
-                </div>
-                <div class="sequence-stats">
-                    <span class="stat stat-passed">3 Recorded</span>
-                    <span class="stat stat-failed">2 Manual</span>
-                    <span class="stat stat-skipped">0 Skipped</span>
-                </div>
-            </div> -->
-
-            <div class="steps-container">
-                <div class="step-card" *ngFor="let event of processedEvents; trackBy: trackByFn">
-                    <div class="add-step-button left"><span>+</span></div>
-                    <div class="add-step-button right"><span>+</span></div>
-                    <div [ngSwitch]="event.type">
-                        <div *ngSwitchCase="'click'">
-                            <div class="step-header">
-                                <div class="step-title">
-                                    <span class="step-number">-</span>
-                                    Event Type: {{event.type}}
-                                </div>
-                                <span class="step-status status-passed"></span>
-                            </div>
-                            <div class="step-content">
-                                <p class="step-description">Timestamp: {{event.timestamp | date:'medium'}}</p>
-                                <p class="step-description">Coordinates: ({{($any(event)).x}}, {{$any(event).y}})</p>
-
-                                <div class="screenshots-grid">
-                                    <div class="screenshot">
-                                        <img [src]="'data:image/png;base64,' + ($any(event)).fullClickViewBase64" alt="Full View">
-                                        <div class="screenshot-label label-full">Full</div>
-                                    </div>
-                                    <div class="screenshot">
-                                        <img [src]="'data:image/png;base64,' + ($any(event)).maxTrimmedClickViewBase64" alt="Cropped View">
-                                        <div class="screenshot-label label-medium">Cropped</div>
-                                    </div>
-                                    <div class="screenshot">
-                                        <img [src]="'data:image/png;base64,' + ($any(event)).minTrimmedClickViewBase64" alt="Focused View">
-                                        <div class="screenshot-label label-focused">Focused</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                  }
+                  @case ('keypress') {
+                    <p class="step-description">{{ event.timestamp | date:'medium' }}</p>
+                    <p class="step-description">Typed text</p>
+                    <div class="keys-typed">{{ $any(event).keys }}</div>
+                  }
+                  @case ('area-select') {
+                    <p class="step-description">{{ event.timestamp | date:'medium' }}</p>
+                    <div class="screenshots-grid">
+                      <div class="screenshot">
+                        <img [src]="'data:image/png;base64,' + $any(event).fullViewBase64" alt="Full view">
+                        <div class="screenshot-label label-full">Full</div>
+                      </div>
+                      <div class="screenshot">
+                        <img [src]="'data:image/png;base64,' + $any(event).areaSelectViewBase64" alt="Selected region">
+                        <div class="screenshot-label label-medium">Region</div>
+                      </div>
                     </div>
-                </div>
+                  }
+                }
+              </div>
             </div>
+          }
+          </div>
         </div>
-    </div>
+      </div>
+    }
+  }
 </div>

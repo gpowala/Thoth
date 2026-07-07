@@ -50,4 +50,22 @@ export class RepositoriesHttpService {
       params: path ? { path: encodeURIComponent(path) } : {}
     });
   }
+
+  inspectDirectory(path: string): Observable<{
+    isGitRepo: boolean;
+    name?: string;
+    url?: string;
+    user?: string;
+    branch?: string;
+  }> {
+    return this.http.get<{
+      isGitRepo: boolean;
+      name?: string;
+      url?: string;
+      user?: string;
+      branch?: string;
+    }>(this.configurationProviderService.backendApiBaseUrl + '/repository/inspect', {
+      params: { path: encodeURIComponent(path) }
+    });
+  }
 }

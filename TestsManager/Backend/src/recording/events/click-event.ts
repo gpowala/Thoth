@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { IEvent } from './event-interface';
+import { TargetMeta } from './target-meta';
 
 export class ClickEvent implements IEvent {
     public id: string;
@@ -12,6 +13,8 @@ export class ClickEvent implements IEvent {
     public fullClickViewBase64: string;
     public minTrimmedClickViewBase64: string;
     public maxTrimmedClickViewBase64: string;
+    // Additive target envelope; undefined when the extension sent no metadata.
+    public target?: TargetMeta;
 
     constructor(
         timestamp: Date,
@@ -22,7 +25,8 @@ export class ClickEvent implements IEvent {
         maxTrimmedClickViewFilepath: string,
         fullClickViewBase64: string,
         minTrimmedClickViewBase64: string,
-        maxTrimmedClickViewBase64: string
+        maxTrimmedClickViewBase64: string,
+        target?: TargetMeta
     ) {
         this.id = uuidv4();
         this.timestamp = timestamp;
@@ -34,5 +38,6 @@ export class ClickEvent implements IEvent {
         this.fullClickViewBase64 = fullClickViewBase64;
         this.minTrimmedClickViewBase64 = minTrimmedClickViewBase64;
         this.maxTrimmedClickViewBase64 = maxTrimmedClickViewBase64;
+        this.target = target;
     }
 }

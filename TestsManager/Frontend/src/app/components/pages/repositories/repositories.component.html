@@ -1,185 +1,164 @@
-<div class="container">
-  <div class="blocking-spinner" *ngIf="isCloningRespotitory">
-    <div><mat-spinner></mat-spinner></div>
-    <div>Cloning repository...</div>
-  </div>
-  <div class="blocking-spinner" *ngIf="isSelectingDirectory">
-    <div><mat-spinner></mat-spinner></div>
-    <div>Loading folders...</div>
-  </div>
-  <div class="dialog-overlay directory-dialog" *ngIf="isDirectoryDialogOpen">
-    <div class="dialog-card">
-      <div class="dialog-title">Select repository directory</div>
-      <div class="dialog-subtitle">Choose a local path where the repository will be cloned.</div>
-      <div class="dialog-body">
-        <div class="dialog-path-row">
-          <button mat-button class="dialog-up-button" (click)="goUpDirectory()" [disabled]="isSelectingDirectory || isCurrentDirectoryRoot">
-            <mat-icon>arrow_upward</mat-icon>
-            Up
-          </button>
-          <div class="dialog-path">{{currentDirectoryPath || 'Computer'}}</div>
-        </div>
-        <div class="dialog-list" *ngIf="directoryEntries.length > 0; else emptyDirectoryList">
-          <div class="dialog-row" *ngFor="let entry of directoryEntries" (click)="openDirectory(entry)">
-            <mat-icon class="dialog-folder-icon">folder</mat-icon>
-            <span class="dialog-row-name">{{entry.name}}</span>
-            <mat-icon class="dialog-chevron" *ngIf="entry.hasChildren">chevron_right</mat-icon>
+<div class="page">
+  <!-- Blocking spinners -->
+  @if (isCloningRespotitory) {
+    <div class="blocking-spinner">
+      <mat-spinner diameter="48"></mat-spinner>
+      <div class="blocking-spinner-text">Cloning repository...</div>
+    </div>
+  }
+  @if (isSelectingDirectory) {
+    <div class="blocking-spinner">
+      <mat-spinner diameter="48"></mat-spinner>
+      <div class="blocking-spinner-text">Loading folders...</div>
+    </div>
+  }
+
+  <!-- Directory browser dialog -->
+  @if (isDirectoryDialogOpen) {
+    <div class="dialog-overlay directory-dialog">
+      <div class="dialog-card">
+        <div class="dialog-title">Select repository directory</div>
+        <div class="dialog-subtitle">Choose a local path where the repository will be cloned.</div>
+        <div class="dialog-body">
+          <div class="dialog-path-row">
+            <button class="btn btn-ghost dialog-up-button" (click)="goUpDirectory()"
+              [disabled]="isSelectingDirectory || isCurrentDirectoryRoot">
+              <mat-icon>arrow_upward</mat-icon>
+              Up
+            </button>
+            <div class="dialog-path">{{ currentDirectoryPath || 'Computer' }}</div>
           </div>
+
+          @if (directoryEntries.length > 0) {
+            <div class="dialog-list">
+              @for (entry of directoryEntries; track entry.path) {
+                <div class="dialog-row" (click)="openDirectory(entry)">
+                  <mat-icon class="dialog-folder-icon">folder</mat-icon>
+                  <span class="dialog-row-name">{{ entry.name }}</span>
+                  @if (entry.hasChildren) {
+                    <mat-icon class="dialog-chevron">chevron_right</mat-icon>
+                  }
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="dialog-empty">No folders found in this location.</div>
+          }
+
+          @if (directoryDialogMessage) {
+            <div class="dialog-message">{{ directoryDialogMessage }}</div>
+          }
         </div>
-        <ng-template #emptyDirectoryList>
-          <div class="dialog-empty">No folders found in this location.</div>
-        </ng-template>
-        <div class="dialog-message" *ngIf="directoryDialogMessage">{{directoryDialogMessage}}</div>
-      </div>
-      <div class="dialog-actions">
-        <button mat-raised-button color="primary" (click)="selectCurrentDirectory()" [disabled]="isSelectingDirectory || !currentDirectoryPath">
-          Use Selected Folder
-        </button>
-        <button mat-button (click)="closeDirectoryDialog()" [disabled]="isSelectingDirectory">Cancel</button>
+        <div class="dialog-actions">
+          <button class="btn btn-ghost" (click)="closeDirectoryDialog()" [disabled]="isSelectingDirectory">Cancel</button>
+          <button class="btn btn-primary" (click)="selectCurrentDirectory()"
+            [disabled]="isSelectingDirectory || !currentDirectoryPath">
+            Use selected folder
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  }
 
-  <div class="dialog-overlay" *ngIf="isAddRepositoryDialogOpen">
-    <div class="dialog-card dialog-card-wide">
-      <div class="dialog-title">Add repository</div>
-      <div class="dialog-subtitle">Provide repository details to register it for testing.</div>
-      <div class="dialog-body">
-        <div class="add-repo-grid">
-          <div class="form-field">
-            <label>Repository Name</label>
-            <input type="text" [(ngModel)]="repositoryName">
-          </div>
-          <div class="form-field">
-            <label>User</label>
-            <input type="text" [(ngModel)]="repositoryUser">
-          </div>
-          <div class="form-field form-field-wide">
-            <label>Repository URL</label>
-            <input type="text" [(ngModel)]="repositoryUrl">
-          </div>
-          <div class="form-field form-field-wide">
-            <label>PAT (Token)</label>
-            <input type="password" [(ngModel)]="repositoryToken">
-          </div>
-          <div class="form-field form-field-wide">
-            <label>Local Directory</label>
-            <div class="directory-input-inline">
-              <input type="text" [(ngModel)]="repositoryLocalDirectory">
-              <button mat-mini-fab class="main-fab-button directory-browse-button" color="primary" (click)="browseForDirectory()">
-                <mat-icon>folder</mat-icon>
-              </button>
+  <!-- Add repository dialog -->
+  @if (isAddRepositoryDialogOpen) {
+    <div class="dialog-overlay">
+      <div class="dialog-card dialog-card-wide">
+        <div class="dialog-title">Add repository</div>
+        <div class="dialog-subtitle">Provide repository details to register it for testing.</div>
+        <div class="dialog-body">
+          @if (existingRepoDetected) {
+            <div class="dialog-hint">
+              <mat-icon>check_circle</mat-icon>
+              <span>Existing repository detected — details prefilled. Just enter your access token.</span>
+            </div>
+          }
+          <div class="add-repo-grid">
+            <div class="field">
+              <label>Repository name</label>
+              <input class="input" type="text" [(ngModel)]="repositoryName" placeholder="my-test-repo">
+            </div>
+            <div class="field">
+              <label>User</label>
+              <input class="input" type="text" [(ngModel)]="repositoryUser" placeholder="username">
+            </div>
+            <div class="field field-wide">
+              <label>Repository URL</label>
+              <input class="input" type="text" [(ngModel)]="repositoryUrl" placeholder="https://...">
+            </div>
+            <div class="field field-wide">
+              <label>PAT (token)</label>
+              <input class="input" type="password" [(ngModel)]="repositoryToken" placeholder="••••••••">
+            </div>
+            <div class="field field-wide">
+              <label>Local directory</label>
+              <div class="directory-input-inline">
+                <input class="input" type="text" [(ngModel)]="repositoryLocalDirectory" placeholder="C:\path\to\folder">
+                <button class="icon-btn directory-browse-button" (click)="browseForDirectory()" title="Browse">
+                  <mat-icon>folder</mat-icon>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="dialog-actions">
-        <button mat-raised-button color="primary" (click)="registerRepository()" [disabled]="isCloningRespotitory">
-          Add Repository
-        </button>
-        <button mat-button (click)="closeAddRepositoryDialog()" [disabled]="isCloningRespotitory">Cancel</button>
+        <div class="dialog-actions">
+          <button class="btn btn-ghost" (click)="closeAddRepositoryDialog()" [disabled]="isCloningRespotitory">Cancel</button>
+          <button class="btn btn-primary" (click)="registerRepository()" [disabled]="isCloningRespotitory">
+            Add repository
+          </button>
+        </div>
       </div>
     </div>
+  }
+
+  <!-- Header -->
+  <div class="repositories-header-row">
+    <div>
+      <div class="page-title">Repositories</div>
+      <div class="page-subtitle">Locally registered test repositories.</div>
+    </div>
+    <button class="btn btn-primary" (click)="openAddRepositoryDialog()">
+      <mat-icon>add</mat-icon>
+      Add repository
+    </button>
   </div>
 
-  <!-- <div class="repositories-header" style="width: 100%;">Manage repositories</div>
-  <div style="font-size: 0.8em; font-weight: normal; width: 100%;">list of locally registered tests repositories</div> -->
-
-  <div class="repositories-content">
-    <div class="repositories-header-row">
-      <div class="repositories-header-title">Repositories</div>
-      <button mat-raised-button color="primary" (click)="openAddRepositoryDialog()">Add Repository</button>
-    </div>
-    <table class="repositories-table" style="width: 100%;">
-        <thead>
-            <tr>
-                <th class="table-header-id">ID</th>
-                <th class="table-header">Repository Name</th>
-                <th class="table-header">Repository URL</th>
-                <th class="table-header">User</th>
-                <th class="table-header">Local Directory</th>
-                <th class="table-header">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr *ngFor="let repo of repositories"
-                class="repository-item"
-                (mouseover)="onMouseOver($event)"
-                (mouseout)="onMouseOut($event)" style="transition: background-color 0.3s;">
-                <td style="width: 1%; white-space: nowrap; padding: 5px; text-align: left;">{{repo.id}}</td>
-                <td style="white-space: nowrap; padding: 5px; text-align: center;">{{repo.name}}</td>
-                <td style="white-space: nowrap; padding: 5px; text-align: center;"><a href="{{repo.url}}">{{repo.url}}</a></td>
-                <td style="white-space: nowrap; padding: 5px; text-align: center;">{{repo.user}}</td>
-                <td style="white-space: nowrap; padding: 5px; text-align: center;">{{repo.directory}}</td>
-                <td style="white-space: nowrap; padding: 5px; text-align: center;">
-                  <button mat-mini-fab class="main-fab-button" color="primary" (click)="unregisterRepository(repo.id)">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </td>
-            </tr>
-        </tbody>
+  <!-- Table -->
+  <div class="table-wrap">
+    <table class="repositories-table">
+      <thead>
+        <tr>
+          <th class="col-id">ID</th>
+          <th>Repository name</th>
+          <th>Repository URL</th>
+          <th>User</th>
+          <th>Local directory</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (repo of repositories; track repo.id) {
+          <tr class="repository-item">
+            <td class="col-id">{{ repo.id }}</td>
+            <td class="cell-strong">{{ repo.name }}</td>
+            <td><a [href]="repo.url">{{ repo.url }}</a></td>
+            <td>{{ repo.user }}</td>
+            <td class="cell-muted">{{ repo.directory }}</td>
+            <td class="col-actions">
+              <button class="icon-btn danger" (click)="unregisterRepository(repo.id)" title="Remove">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" class="table-empty">
+              <mat-icon>inbox</mat-icon>
+              <span>No repositories yet. Add one to get started.</span>
+            </td>
+          </tr>
+        }
+      </tbody>
     </table>
   </div>
-
-    <!-- <div style="width: 100%; margin-top: 20px;">
-        <div style="display: flex; font-weight: bold; font-size: 0.8em; background-color: #c4d7ff; color: #3f51b5; padding: 12px;">
-            <div style="flex: 1;">Name</div>
-            <div style="flex: 1;">Local directory</div>
-            <div style="flex: 1;">Description</div>
-            <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center;"></div>
-        </div>
-
-
-        <ng-container *ngFor="let repo of repositories">
-            <div style="display: flex; border-bottom: 1px solid #e0e0e0; padding: 12px;">
-                <div style="flex: 1;">{{repo.name}}</div>
-                <div style="flex: 1;">{{repo.directory}}</div>
-                <div style="flex: 1;">{{repo.description}}</div>
-                <div style="flex: 0 0 auto; display: flex; align-items: center; justify-content: center;">
-                    <mat-icon style="cursor: pointer; color: #ff4081;" (click)="unregisterRepository(repo.id)">delete</mat-icon>
-                </div>
-            </div>
-        </ng-container>
-
-
-        <style>
-            .hovered {
-                background-color: #c4d7ff !important;
-                cursor: pointer;
-            }
-        </style>
-        <div class="add-row"
-            [ngStyle]="{'background-color': 'c4d7ff', 'color': '#3f51b5'}"
-            (mouseover)="rowHovered=true"
-            (mouseout)="rowHovered=false"
-            [ngClass]="{'hovered': rowHovered}"
-            style="display: flex; justify-content: center; align-items: center; padding: 8px;" *ngIf="!expandRow" (click)="expandRow = !expandRow">
-            <div style="display: flex; align-items: center; cursor: pointer;" >
-                <mat-icon style="font-size: 16px; display: flex; font-weight: bold; align-items: center;">add</mat-icon>
-            </div>
-        </div>
-        <div class="add-row" style="display: flex; justify-content: center; align-items: center; padding: 8px; background-color: #c4d7ff; " *ngIf="expandRow">
-                <div style="padding: 16px; width: 100%;" *ngIf="expandRow">
-                    <div style="margin-bottom: 10px;">
-                        <div style="font-size: 1.0em; font-weight: bold; color: #3f51b5; ">register new repository</div>
-                        <div style="font-size: 0.8em; font-weight: normal;">provide details to register a new repository to be used for testing</div>
-                    </div>
-                    <div style="margin-bottom: -10px; display: flex; justify-content: space-between;">
-                        <mat-form-field style="width: 32%;">
-                            <mat-label>name</mat-label><input matInput #nameInput>
-                        </mat-form-field>
-                        <mat-form-field style="width: 32%;">
-                            <mat-label>local directory</mat-label><input matInput #localDirectoryInput>
-                        </mat-form-field>
-                        <mat-form-field style="width: 32%;">
-                            <mat-label>description</mat-label><input matInput #descriptionInput>
-                        </mat-form-field>
-                    </div>
-                    <div style="padding-top: 0; display: flex; justify-content: left;">
-                        <button mat-button style="color: #3f51b5; margin-right: 10px;" (click)="registerRepository(nameInput.value, localDirectoryInput.value, descriptionInput.value)">register repository</button>
-                        <button mat-button style="color: #3f51b5;" (click)="expandRow = !expandRow">cancel</button>
-                    </div>
-                </div>
-        </div>
-    </div> -->
 </div>

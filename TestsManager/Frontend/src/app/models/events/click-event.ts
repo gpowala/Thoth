@@ -1,8 +1,9 @@
 import { IEvent } from './event-interface';
+import { TargetKind, TargetSelectors, TargetRect } from './target-meta';
 
 export class ClickEvent implements IEvent {
     public type: string = 'click';
-    
+
     public id: string;
     public timestamp: Date;
     public x: number;
@@ -13,6 +14,11 @@ export class ClickEvent implements IEvent {
     public fullClickViewBase64: string;
     public minTrimmedClickViewBase64: string;
     public maxTrimmedClickViewBase64: string;
+    // Additive DOM/visual metadata (undefined for events recorded before Phase 0).
+    public targetKind?: TargetKind;
+    public selectors?: TargetSelectors;
+    public boundingRect?: TargetRect | null;
+    public tag?: string | null;
 
     constructor(
         id: string,
@@ -24,7 +30,11 @@ export class ClickEvent implements IEvent {
         maxTrimmedClickViewFilepath: string,
         fullClickViewBase64: string,
         minTrimmedClickViewBase64: string,
-        maxTrimmedClickViewBase64: string
+        maxTrimmedClickViewBase64: string,
+        targetKind?: TargetKind,
+        selectors?: TargetSelectors,
+        boundingRect?: TargetRect | null,
+        tag?: string | null
     ) {
         this.id = id;
         this.timestamp = timestamp;
@@ -36,5 +46,9 @@ export class ClickEvent implements IEvent {
         this.fullClickViewBase64 = fullClickViewBase64;
         this.minTrimmedClickViewBase64 = minTrimmedClickViewBase64;
         this.maxTrimmedClickViewBase64 = maxTrimmedClickViewBase64;
+        this.targetKind = targetKind;
+        this.selectors = selectors;
+        this.boundingRect = boundingRect;
+        this.tag = tag;
     }
 }

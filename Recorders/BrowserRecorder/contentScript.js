@@ -115,6 +115,134 @@ const safeSendMessage = (message, logMessage, retryOnFail = true) => {
     }
 };
 
+// ---------------------------------------------------------------------------
+// Target inspection: robust selectors + DOM/visual classification.
+// This is additive metadata that rides alongside the (frozen) coordinate data.
+// All helpers are defensive: they must never throw inside an event handler.
+// ---------------------------------------------------------------------------
+
+const THOTH_STABLE_ATTRS = ['data-testid', 'data-test', 'data-cy', 'data-qa', 'name', 'aria-label'];
+
+// Read className safely (SVG elements expose an SVGAnimatedString, not a string).
+const thothClassName = (el) => {
+    const cn = el && el.className;
+    if (typeof cn === 'string') return cn;
+    if (cn && typeof cn.baseVal === 'string') return cn.baseVal;
+    return '';
+};
+
+const thothCssEscape = (value) => {
+    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(value);
+    return String(value).replace(/([^\w-])/g, '\\$1');
+};
+
+// Find the first stable, human-meaningful attribute we can key a selector on.
+const thothStableAttr = (el) => {
+    for (const attr of THOTH_STABLE_ATTRS) {
+        const val = el.getAttribute && el.getAttribute(attr);
+        if (val) return { attr, value: val };
+    }
+    return null;
+};
+
+// A compact CSS path: id short-circuits, otherwise tag + :nth-of-type up the tree.
+const thothCssPath = (el) => {
+    if (!el || el.nodeType !== 1) return '';
+    const segments = [];
+    let node = el;
+    let depth = 0;
+    while (node && node.nodeType === 1 && depth < 6) {
+        if (node.id) {
+            segments.unshift(`#${thothCssEscape(node.id)}`);
+            break;
+        }
+        let selector = node.tagName.toLowerCase();
+        const parent = node.parentElement;
+        if (parent) {
+            const sameTag = Array.prototype.filter.call(
+                parent.children, (c) => c.tagName === node.tagName
+            );
+            if (sameTag.length > 1) {
+                selector += `:nth-of-type(${sameTag.indexOf(node) + 1})`;
+            }
+        }
+        segments.unshift(selector);
+        node = node.parentElement;
+        depth++;
+    }
+    return segments.join(' > ');
+};
+
+// A positional XPath, capped in depth, id short-circuits.
+const thothXPath = (el) => {
+    if (!el || el.nodeType !== 1) return '';
+    const segments = [];
+    let node = el;
+    let depth = 0;
+    while (node && node.nodeType === 1 && depth < 8) {
+        if (node.id) {
+            segments.unshift(`//*[@id="${node.id}"]`);
+            return segments.join('/');
+        }
+        let index = 1;
+        let sibling = node.previousElementSibling;
+        while (sibling) {
+            if (sibling.tagName === node.tagName) index++;
+            sibling = sibling.previousElementSibling;
+        }
+        segments.unshift(`${node.tagName.toLowerCase()}[${index}]`);
+        node = node.parentElement;
+        depth++;
+    }
+    return '/' + segments.join('/');
+};
+
+// Decide whether this target plays back as DOM (selectors) or visual (coords + image).
+// Rule: canvas or any iframe content => visual; everything else => dom (or dom-weak
+// when we could not derive a stable selector).
+const thothClassifyTarget = (el) => {
+    if (!el || el.nodeType !== 1) return 'visual';
+    const tag = el.tagName;
+    if (tag === 'CANVAS' || tag === 'IFRAME') return 'visual';
+    // Same-origin iframe content bubbles up with a foreign ownerDocument.
+    if (el.ownerDocument && el.ownerDocument !== document) return 'visual';
+    return (el.id || thothStableAttr(el)) ? 'dom' : 'dom-weak';
+};
+
+// Build the additive target envelope. Never throws; returns a best-effort object.
+const thothBuildTargetMeta = (el) => {
+    try {
+        if (!el || el.nodeType !== 1) {
+            return { targetKind: 'visual', selectors: {}, tag: null, boundingRect: null, dpr: window.devicePixelRatio || 1 };
+        }
+        const rect = el.getBoundingClientRect();
+        const stable = thothStableAttr(el);
+        return {
+            targetKind: thothClassifyTarget(el),
+            tag: el.tagName,
+            selectors: {
+                testId: stable ? `${stable.attr}=${stable.value}` : null,
+                id: el.id || null,
+                css: thothCssPath(el),
+                xpath: thothXPath(el)
+            },
+            attrs: {
+                className: thothClassName(el) || null,
+                type: el.getAttribute ? el.getAttribute('type') : null,
+                role: el.getAttribute ? el.getAttribute('role') : null
+            },
+            // CSS px, viewport-relative, plus the scroll offset + dpr needed to map
+            // this rect into the screenshot's pixel space later (derive-on-demand crops).
+            boundingRect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+            scroll: { x: window.scrollX, y: window.scrollY },
+            dpr: window.devicePixelRatio || 1
+        };
+    } catch (e) {
+        console.warn('[Thoth] Failed to build target meta:', e);
+        return { targetKind: 'dom-weak', selectors: {}, tag: null, boundingRect: null, dpr: window.devicePixelRatio || 1 };
+    }
+};
+
 // Click event handler
 const clickHandler = function(event) {
     if (mousedownProcessingTimer) {
@@ -142,8 +270,9 @@ const clickHandler = function(event) {
         target: {
             tagName: event.target.tagName,
             id: event.target.id,
-            className: event.target.className
-        }
+            className: thothClassName(event.target)
+        },
+        metadata: thothBuildTargetMeta(event.target)
     }, 'Click event captured');
 };
 
@@ -167,10 +296,11 @@ const mousedownHandler = function(event) {
         target: {
             tagName: event.target.tagName,
             id: event.target.id,
-            className: event.target.className
-        }
+            className: thothClassName(event.target)
+        },
+        metadata: thothBuildTargetMeta(event.target)
     };
-    
+
     if (mousedownProcessingTimer) {
         clearTimeout(mousedownProcessingTimer);
     }
@@ -186,9 +316,24 @@ const mousedownHandler = function(event) {
 
 // Keypress event handler
 const keypressHandler = function(event) {
+    let key = event.key;
+
+    // Enter is ambiguous: a newline inside a multi-line field vs. a submit/action
+    // everywhere else. Inside a textarea/contenteditable (without a submit
+    // modifier) we treat it as text (\n, folded into the typing group); otherwise
+    // it stays "Enter" and the backend records it as a discrete [Enter] step.
+    if (key === 'Enter') {
+        const t = event.target;
+        const isMultiline = !!t && (t.tagName === 'TEXTAREA' || t.isContentEditable === true);
+        const hasSubmitModifier = event.ctrlKey || event.metaKey;
+        if (isMultiline && !hasSubmitModifier) {
+            key = '\n';
+        }
+    }
+
     safeSendMessage({
         action: "tests-recorder-keypress-event",
-        key: event.key,
+        key: key,
         timestamp: performance.now()
     }, 'Keypress event captured');
 };
@@ -274,7 +419,10 @@ function createOverlay() {
                     bottom: Math.max(thoth_waitScreenshotStartY, event.clientY),
                     left: Math.min(thoth_waitScreenshotStartX, event.clientX),
                     right: Math.max(thoth_waitScreenshotStartX, event.clientX)
-                }
+                },
+                // Overlay rect is CSS px; backend needs dpr to map it onto the
+                // device-pixel screenshot when cropping the selected region.
+                dpr: window.devicePixelRatio || 1
             }, 'Area select event captured');
         }
     });

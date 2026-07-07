@@ -1,0 +1,296 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+// ---------------------------------------------------------------------------
+// Angular Material — custom M3 dark theme (violet / cyan accent)
+// ---------------------------------------------------------------------------
+$app-theme: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$cyan-palette,
+    tertiary: mat.$violet-palette,
+  ),
+  density: (
+    scale: 0,
+  ),
+));
+
+html {
+  color-scheme: dark;
+  @include mat.all-component-themes($app-theme);
+}
+
+// ---------------------------------------------------------------------------
+// Design tokens
+// ---------------------------------------------------------------------------
+:root {
+  // Surfaces
+  --bg-base: #0e0f14;
+  --bg-sunken: #0a0b0f;
+  --surface-1: #16181f;
+  --surface-2: #1c1f28;
+  --surface-3: #232733;
+  --surface-hover: #262b37;
+
+  // Lines
+  --border: #2a2e3a;
+  --border-strong: #3a4051;
+
+  // Text
+  --text-1: #e7e9f0;
+  --text-2: #a2abbd;
+  --text-3: #6b7385;
+
+  // Accent (cyan)
+  --accent: #22d3ee;
+  --accent-hover: #5ce7f7;
+  --accent-contrast: #062631;
+  --accent-soft: rgba(34, 211, 238, 0.14);
+  --accent-soft-hover: rgba(34, 211, 238, 0.22);
+
+  // Status
+  --success: #37d399;
+  --success-soft: rgba(55, 211, 153, 0.15);
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, 0.15);
+  --warning: #f7c948;
+  --warning-soft: rgba(247, 201, 72, 0.15);
+
+  // Radii
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  // Shadows
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 24px 60px rgba(0, 0, 0, 0.6);
+
+  // Typography
+  --font: 'Inter', 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+}
+
+// ---------------------------------------------------------------------------
+// Base
+// ---------------------------------------------------------------------------
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text-1);
+  background-color: var(--bg-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+// ---------------------------------------------------------------------------
+// Scrollbars
+// ---------------------------------------------------------------------------
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+  background-clip: content-box;
+}
+
+// ---------------------------------------------------------------------------
+// Shared UI primitives (buttons, inputs, cards)
+// ---------------------------------------------------------------------------
+
+// Primary action button
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease,
+    color 0.18s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  background: var(--surface-3);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-2);
+  border-color: var(--border);
+}
+
+.btn-ghost:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+
+.btn-ghost:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+// Icon button (round)
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.icon-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+
+.icon-btn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.icon-btn:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+// Text field
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  letter-spacing: 0.2px;
+}
+
+.input {
+  height: 42px;
+  width: 100%;
+  padding: 0 14px;
+  color: var(--text-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.input::placeholder {
+  color: var(--text-3);
+}
+
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+// Page scaffolding
+.page {
+  padding: 28px 32px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: -0.2px;
+}
+
+.page-subtitle {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
+
+// ---------------------------------------------------------------------------
+// Angular Material component nudges for the dark theme
+// ---------------------------------------------------------------------------
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: var(--surface-3);
+  --mdc-snackbar-supporting-text-color: var(--text-1);
+  --mat-snack-bar-button-color: var(--accent);
+}
+
+.mat-mdc-dialog-surface {
+  background: var(--surface-1) !important;
+  color: var(--text-1) !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg) !important;
+}

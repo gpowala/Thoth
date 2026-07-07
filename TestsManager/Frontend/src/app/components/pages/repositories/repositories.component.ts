@@ -1,13 +1,7 @@
 import { Component, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
-import { MatCardModule } from '@angular/material/card';
-import {MatButtonModule} from '@angular/material/button';
-import {MatInputModule} from '@angular/material/input';
-import {MatFormFieldModule} from '@angular/material/form-field';
-import {MatTableModule} from '@angular/material/table';
-import {MatIconModule} from '@angular/material/icon';
-import {MatSnackBar} from '@angular/material/snack-bar';
-import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
-import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Repository } from '../../../models/repository';
 import { RepositoriesHttpService } from '../../../services/repositories-http-service';
 import { FormsModule } from '@angular/forms';
@@ -16,13 +10,7 @@ import { FormsModule } from '@angular/forms';
   selector: 'app-repositories',
   standalone: true,
   imports: [
-    MatCardModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatTableModule,
     MatIconModule,
-    CommonModule,
     FormsModule,
     MatProgressSpinnerModule
   ],
@@ -32,11 +20,6 @@ import { FormsModule } from '@angular/forms';
 })
 export class RepositoriesComponent {
   repositories: Repository[] = [];
-
-  displayedColumns: string[] = ['name', 'localDirectory', 'description'];
-
-  expandRow: boolean = false;
-  rowHovered: boolean = false;
 
   repositoryName: string = "";
   repositoryUrl: string = "";
@@ -49,6 +32,7 @@ export class RepositoriesComponent {
   isSelectingDirectory: boolean = false;
   isDirectoryDialogOpen: boolean = false;
   isAddRepositoryDialogOpen: boolean = false;
+  existingRepoDetected: boolean = false;
   directoryDialogMessage: string = "";
   currentDirectoryPath: string = "";
   currentDirectoryParentPath: string = "";
@@ -98,10 +82,32 @@ export class RepositoriesComponent {
       this.cdr.detectChanges();
       return;
     }
-    this.repositoryLocalDirectory = this.currentDirectoryPath;
+    const selected = this.currentDirectoryPath;
+    this.repositoryLocalDirectory = selected;
     this.isDirectoryDialogOpen = false;
     this.directoryDialogMessage = "";
+    this.existingRepoDetected = false;
     this.cdr.detectChanges();
+
+    // Inspect the folder — if it already holds a git repo, prefill the details.
+    this.repositoryHttpService.inspectDirectory(selected).subscribe({
+      next: (info) => {
+        if (info.isGitRepo) {
+          this.existingRepoDetected = true;
+          if (info.name) this.repositoryName = info.name;
+          if (info.url) this.repositoryUrl = info.url;
+          if (info.user) this.repositoryUser = info.user;
+        } else {
+          this.existingRepoDetected = false;
+        }
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // Inspection failed — leave the fields as they are.
+        this.existingRepoDetected = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   loadDirectoryEntries(path?: string, allowFallback: boolean = false) {
@@ -224,17 +230,10 @@ export class RepositoriesComponent {
     this.repositoryUser = "";
     this.repositoryToken = "";
     this.repositoryLocalDirectory = "";
+    this.existingRepoDetected = false;
   }
 
   openSnackBar(message: string, action: string) {
     this._snackBar.open(message, action);
-  }
-
-  onMouseOver(event: MouseEvent) {
-    (event.currentTarget as HTMLElement).style.backgroundColor = '#f0f0f0';
-  }
-
-  onMouseOut(event: MouseEvent) {
-    (event.currentTarget as HTMLElement).style.backgroundColor = '';
   }
 }

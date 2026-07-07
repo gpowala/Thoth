@@ -1,22 +1,19 @@
-import { ChangeDetectorRef, Component, NgZone, AfterViewInit, HostListener, ViewChildren, QueryList, ElementRef, Renderer2, OnDestroy } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { Repository } from '../../../models/repository';
 import { RepositoriesHttpService } from '../../../services/repositories-http-service';
-import { ElectronIpcService } from '../../../services/electron-ipc-service';
-import { Session, SessionStatus } from '../../../models/session';
+import { Session } from '../../../models/session';
 import { ClickEvent } from '../../../models/events/click-event';
 import { KeypressEvent } from '../../../models/events/keypress-event';
 import { AreaSelectEvent } from '../../../models/events/area-select-event';
 import { IEvent } from '../../../models/events/event-interface';
-import { ImageGalleryComponent } from './image-gallery/image-gallery.component';
 import { RecordingSessionService } from '../../../services/recording-session-service';
 
 
@@ -35,180 +32,78 @@ export enum TestCreationStatus {
     FormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatButtonModule,
-    MatCardModule,
     MatSelectModule,
-    MatIconModule,
-    MatDialogModule
+    MatIconModule
   ],
   templateUrl: './create-test.component.html',
   styleUrl: './create-test.component.css'
 })
-export class CreateTestComponent implements AfterViewInit, OnDestroy {
+export class CreateTestComponent implements OnInit, AfterViewInit, OnDestroy {
   TestCreationStatus = TestCreationStatus;
   status: TestCreationStatus = TestCreationStatus.SESSION_SETUP;
 
   session: Session = new Session();
   processedEvents: IEvent[] = [];
 
+  // Dotted flow connectors drawn behind the step cards.
+  @ViewChild('flow') private flowRef?: ElementRef<HTMLElement>;
+  flowPath = '';
+  flowWidth = 0;
+  flowHeight = 0;
+  private flowResizeObserver?: ResizeObserver;
+  private observedFlowEl?: HTMLElement;
+  private flowRafId: number | null = null;
+
   repositories: Repository[] = [];
   selectedRepositoryId: number | null = null;
   testName: string = '';
   testDescription: string = '';
 
-  private resizeObserver: ResizeObserver | null = null;
-  private mutationObserver: MutationObserver | null = null;
-  private hasSessionStarted = false;
+  linkCopied = false;
+  private linkCopiedTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  private guid: string | null = null;
+  private subscriptions = new Subscription();
 
   constructor(
     private repositoryHttpService: RepositoriesHttpService,
     private recordingSessionService: RecordingSessionService,
-    private ngZone: NgZone,
-    private cdr: ChangeDetectorRef,
-    private dialog: MatDialog,
-    private renderer: Renderer2
-  ) {
+    private route: ActivatedRoute,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit(): void {
     this.getRepositories();
-    console.log('Session status:', this.session);
-    console.log('Session status:', this.session.status);
 
-    this.ngZone.run(() => {
-      this.recordingSessionService.recordingSessionChanged$.subscribe((session: Session) => {
-        this.session = session;
-        this.updateStatusFromSession(session);
-        this.processSessionEvents(session);
-        this.cdr.detectChanges();
-      });
-    });
+    this.subscriptions.add(
+      this.route.paramMap.subscribe(params => {
+        this.guid = params.get('guid');
+        this.syncFromStore();
+      })
+    );
+
+    // React to live updates (session linked, new events, ...) from the store.
+    this.subscriptions.add(
+      this.recordingSessionService.sessions$.subscribe(() => this.syncFromStore())
+    );
   }
 
-  ngAfterViewInit() {
-    this.initializeObservers();
-  }
-
-  ngOnDestroy() {
-    this.cleanupObservers();
-  }
-
-  @HostListener('window:resize')
-  onResize() {
-    this.updateAllPreviewPositions();
-  }
-
-  @HostListener('window:scroll')
-  onScroll() {
-    this.updateAllPreviewPositions();
-  }
-
-  private initializeObservers() {
-    // Create a ResizeObserver to detect changes in element sizes
-    this.resizeObserver = new ResizeObserver(() => {
-      this.updateAllPreviewPositions();
-    });
-
-    // Create a MutationObserver to detect when new events are added
-    this.mutationObserver = new MutationObserver((mutations) => {
-      this.setupPreviewContainers();
-    });
-
-    // Start observing the container for added nodes
-    const container = document.querySelector('.container');
-    if (container) {
-      this.mutationObserver.observe(container, { childList: true, subtree: true });
+  ngAfterViewInit(): void {
+    if (typeof ResizeObserver !== 'undefined') {
+      this.flowResizeObserver = new ResizeObserver(() => this.scheduleFlowUpdate());
     }
-
-    // Initial setup
-    setTimeout(() => {
-      this.setupPreviewContainers();
-    }, 100);
+    this.scheduleFlowUpdate();
   }
 
-  private cleanupObservers() {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+    if (this.linkCopiedTimeout) {
+      clearTimeout(this.linkCopiedTimeout);
     }
-
-    if (this.mutationObserver) {
-      this.mutationObserver.disconnect();
-      this.mutationObserver = null;
-    }
-  }
-
-  private setupPreviewContainers() {
-    const previewContainers = document.querySelectorAll('.image-preview-container');
-
-    previewContainers.forEach(container => {
-      // Observe each container for size changes
-      if (this.resizeObserver) {
-        this.resizeObserver.observe(container);
-      }
-
-      const button = container.querySelector('.gallery-button') as HTMLElement;
-      const preview = container.querySelector('.hover-preview') as HTMLElement;
-
-      if (button && preview) {
-        // We don't need to clone the button anymore as it breaks Angular event binding
-        // Instead, just add our positioning logic
-
-        // Add mouseenter event to position the preview
-        container.addEventListener('mouseenter', () => {
-          this.positionPreview(container as HTMLElement, preview);
-        });
-      }
-    });
-
-    // Initial positioning update
-    this.updateAllPreviewPositions();
-  }
-
-  private updateAllPreviewPositions() {
-    const previewContainers = document.querySelectorAll('.image-preview-container');
-
-    previewContainers.forEach(container => {
-      const preview = container.querySelector('.hover-preview') as HTMLElement;
-      if (preview) {
-        this.positionPreview(container as HTMLElement, preview);
-      }
-    });
-  }
-
-  private positionPreview(container: HTMLElement, preview: HTMLElement) {
-    // Get container position
-    const containerRect = container.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-
-    // Calculate preview height without making it visible
-    // Clone the preview to measure it without affecting the display
-    const previewClone = preview.cloneNode(true) as HTMLElement;
-    previewClone.style.display = 'block';
-    previewClone.style.visibility = 'hidden';
-    previewClone.style.position = 'absolute';
-    previewClone.style.pointerEvents = 'none';
-    document.body.appendChild(previewClone);
-
-    // Get preview height from the clone
-    const previewHeight = previewClone.offsetHeight;
-
-    // Remove the clone
-    document.body.removeChild(previewClone);
-
-    // Check if there's enough space below
-    const spaceBelow = viewportHeight - containerRect.bottom;
-    const spaceAbove = containerRect.top;
-
-    if (spaceBelow < previewHeight && spaceAbove > spaceBelow) {
-      // Not enough space below and more space above, show above
-      this.renderer.setStyle(preview, 'bottom', '100%');
-      this.renderer.setStyle(preview, 'top', 'auto');
-      this.renderer.setStyle(preview, 'margin-bottom', '8px');
-      this.renderer.setStyle(preview, 'margin-top', '0');
-    } else {
-      // Either enough space below or not enough space above, show below
-      this.renderer.setStyle(preview, 'top', '100%');
-      this.renderer.setStyle(preview, 'bottom', 'auto');
-      this.renderer.setStyle(preview, 'margin-top', '8px');
-      this.renderer.setStyle(preview, 'margin-bottom', '0');
+    this.flowResizeObserver?.disconnect();
+    if (this.flowRafId !== null) {
+      cancelAnimationFrame(this.flowRafId);
     }
   }
 
@@ -216,6 +111,7 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
     this.repositoryHttpService.getRepositories().subscribe({
       next: (repos: Repository[]) => {
         this.repositories = repos;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error fetching repositories:', error);
@@ -224,43 +120,247 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
   }
 
   createRecordingSession(): void {
-    this.recordingSessionService.createRecordingSession().subscribe({
+    this.recordingSessionService.createRecordingSession(this.testName).subscribe({
       next: (session: Session) => {
-        this.session = session;
-        console.log('Session created:', this.session);
-        console.log('Session status:', this.session.status.isActive);
-        this.status = TestCreationStatus.SESSION_CREATED;
+        this.testName = '';
+        this.testDescription = '';
+        this.selectedRepositoryId = null;
+        this.router.navigate(['/create-test', session.guid]);
       }
     });
   }
 
-  trackByRepositoryId(index: number, repository: Repository): number {
-    return repository.id;
+  addStepBefore(index: number): void {
+    // TODO: open the "insert step" options for the position before this step.
   }
 
-  trackByFn(index: number, event: IEvent): string {
-    return event.id;
+  addStepAfter(index: number): void {
+    // TODO: open the "insert step" options for the position after this step.
   }
 
-  private updateStatusFromSession(session: Session): void {
-    if (!session.guid) {
+  /** Human-readable step title per event type. */
+  eventTitle(event: any): string {
+    switch (event.type) {
+      case 'click': return 'Click';
+      case 'keypress': return 'Keyboard input';
+      case 'area-select': return 'Visual assertion';
+      default: return event.type;
+    }
+  }
+
+  /** DOM/visual classification for the hover badge (null when the event carries none). */
+  eventModality(event: any): string | null {
+    return event.targetKind ?? null;
+  }
+
+  /**
+   * A display-friendly view of the full captured envelope, shown on hover.
+   * Heavy base64 image blobs are omitted; everything else (coordinates,
+   * classifier, selectors, geometry) is surfaced so Phase 0 capture is verifiable.
+   */
+  eventEnvelope(event: any): any {
+    const base: any = { type: event.type, id: event.id, timestamp: event.timestamp };
+    switch (event.type) {
+      case 'click':
+        return {
+          ...base,
+          coordinates: { x: event.x, y: event.y },
+          targetKind: event.targetKind ?? null,
+          tag: event.tag ?? null,
+          selectors: event.selectors ?? null,
+          boundingRect: event.boundingRect ?? null
+        };
+      case 'keypress':
+        return { ...base, keys: event.keys };
+      case 'area-select':
+        return {
+          ...base,
+          targetKind: event.targetKind ?? null,
+          rect: { top: event.top, bottom: event.bottom, left: event.left, right: event.right }
+        };
+      default:
+        return base;
+    }
+  }
+
+  stopSession(): void {
+    if (!this.session.guid) {
+      return;
+    }
+    this.recordingSessionService.stopRecordingSession(this.session).subscribe({
+      error: (error) => console.error('Error stopping session:', error)
+    });
+  }
+
+  async copyLink(input: HTMLInputElement): Promise<void> {
+    const url = this.session.url ?? '';
+    if (!url) {
+      return;
+    }
+
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      copied = true;
+    } catch {
+      // Fallback for non-secure contexts / older engines.
+      input.focus();
+      input.select();
+      copied = document.execCommand('copy');
+      input.setSelectionRange(0, 0);
+      input.blur();
+    }
+
+    if (!copied) {
+      return;
+    }
+
+    this.linkCopied = true;
+    if (this.linkCopiedTimeout) {
+      clearTimeout(this.linkCopiedTimeout);
+    }
+    this.linkCopiedTimeout = setTimeout(() => {
+      this.linkCopied = false;
+      this.linkCopiedTimeout = null;
+      this.cdr.detectChanges();
+    }, 2000);
+    this.cdr.detectChanges();
+  }
+
+  private syncFromStore(): void {
+    if (!this.guid) {
       this.status = TestCreationStatus.SESSION_SETUP;
-      this.hasSessionStarted = false;
+      this.session = new Session();
+      this.processedEvents = [];
+      this.cdr.detectChanges();
       return;
     }
 
+    const session = this.recordingSessionService.getSession(this.guid);
+    if (!session) {
+      // Session is unknown (e.g. after a full page reload cleared the store).
+      this.router.navigate(['/create-test']);
+      return;
+    }
+
+    this.session = session;
+    this.status = this.deriveStatus(session);
+    this.processSessionEvents(session);
+    this.cdr.detectChanges();
+    this.scheduleFlowUpdate();
+  }
+
+  private scheduleFlowUpdate(): void {
+    if (this.flowRafId !== null) {
+      cancelAnimationFrame(this.flowRafId);
+    }
+    this.flowRafId = requestAnimationFrame(() => {
+      this.flowRafId = null;
+      this.updateFlowConnectors();
+    });
+  }
+
+  private updateFlowConnectors(): void {
+    const container = this.flowRef?.nativeElement;
+    if (!container) {
+      this.flowPath = '';
+      return;
+    }
+
+    this.ensureFlowObserved(container);
+
+    const cards = Array.from(container.querySelectorAll<HTMLElement>('.step-card'));
+    this.flowWidth = container.clientWidth;
+    this.flowHeight = container.clientHeight;
+
+    if (cards.length < 2) {
+      this.flowPath = '';
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const origin = container.getBoundingClientRect();
+    const boxes = cards.map(el => {
+      const r = el.getBoundingClientRect();
+      return {
+        left: r.left - origin.left,
+        right: r.right - origin.left,
+        top: r.top - origin.top,
+        bottom: r.bottom - origin.top,
+        cx: r.left - origin.left + r.width / 2,
+        cy: r.top - origin.top + r.height / 2
+      };
+    });
+
+    let d = '';
+    for (let i = 0; i < boxes.length - 1; i++) {
+      const a = boxes[i];
+      const b = boxes[i + 1];
+      const sameRow = Math.abs(a.cy - b.cy) < 4;
+
+      if (sameRow) {
+        // Straight dotted connector across the column gap.
+        d += this.roundedPath([[a.right, a.cy], [b.left, b.cy]], 10);
+      } else {
+        // Wrap: drop into the row gap, run across to the next row's first card.
+        const midY = (a.bottom + b.top) / 2;
+        d += this.roundedPath(
+          [[a.cx, a.bottom], [a.cx, midY], [b.cx, midY], [b.cx, b.top]],
+          10
+        );
+      }
+    }
+
+    this.flowPath = d.trim();
+    this.cdr.detectChanges();
+  }
+
+  private ensureFlowObserved(el: HTMLElement): void {
+    if (!this.flowResizeObserver || el === this.observedFlowEl) {
+      return;
+    }
+    if (this.observedFlowEl) {
+      this.flowResizeObserver.unobserve(this.observedFlowEl);
+    }
+    this.flowResizeObserver.observe(el);
+    this.observedFlowEl = el;
+  }
+
+  private roundedPath(points: number[][], radius: number): string {
+    if (points.length < 2) {
+      return '';
+    }
+    const round = (n: number) => Math.round(n * 100) / 100;
+    let d = `M ${round(points[0][0])} ${round(points[0][1])} `;
+
+    for (let i = 1; i < points.length - 1; i++) {
+      const [x0, y0] = points[i - 1];
+      const [x1, y1] = points[i];
+      const [x2, y2] = points[i + 1];
+      const len1 = Math.hypot(x1 - x0, y1 - y0) || 1;
+      const len2 = Math.hypot(x2 - x1, y2 - y1) || 1;
+      const r1 = Math.min(radius, len1 / 2);
+      const r2 = Math.min(radius, len2 / 2);
+      const ix = x1 - ((x1 - x0) / len1) * r1;
+      const iy = y1 - ((y1 - y0) / len1) * r1;
+      const ox = x1 + ((x2 - x1) / len2) * r2;
+      const oy = y1 + ((y2 - y1) / len2) * r2;
+      d += `L ${round(ix)} ${round(iy)} Q ${round(x1)} ${round(y1)} ${round(ox)} ${round(oy)} `;
+    }
+
+    const last = points[points.length - 1];
+    d += `L ${round(last[0])} ${round(last[1])} `;
+    return d;
+  }
+
+  private deriveStatus(session: Session): TestCreationStatus {
     if (session.status.isActive) {
-      this.hasSessionStarted = true;
-      this.status = TestCreationStatus.SESSION_STARTED;
-      return;
+      return TestCreationStatus.SESSION_STARTED;
     }
-
-    if (this.hasSessionStarted) {
-      this.status = TestCreationStatus.SESSION_STOPPED;
-      return;
+    if (session.hasBeenActive) {
+      return TestCreationStatus.SESSION_STOPPED;
     }
-
-    this.status = TestCreationStatus.SESSION_CREATED;
+    return TestCreationStatus.SESSION_CREATED;
   }
 
   private processSessionEvents(session: Session): void {
@@ -269,15 +369,17 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // Keypress grouping now happens on the backend (typing bursts arrive as a
+    // single, already-merged keypress event), so mapping is a straight pass.
     const mappedEvents = session.status.events.map((event: any) => {
       const data = JSON.parse(event.data);
       switch (event.type) {
         case 'click':
-          return new ClickEvent(event.id, event.timestamp, data.x, data.y, data.fullClickViewFilepath, data.minTrimmedClickViewFilepath, data.maxTrimmedClickViewFilepath, data.fullClickViewBase64, data.minTrimmedClickViewBase64, data.maxTrimmedClickViewBase64);
+          return new ClickEvent(event.id, event.timestamp, data.x, data.y, data.fullClickViewFilepath, data.minTrimmedClickViewFilepath, data.maxTrimmedClickViewFilepath, data.fullClickViewBase64, data.minTrimmedClickViewBase64, data.maxTrimmedClickViewBase64, data.targetKind, data.selectors, data.boundingRect, data.tag);
         case 'keypress':
           return new KeypressEvent(event.id, event.timestamp, data.keys);
         case 'area-select':
-          return new AreaSelectEvent(event.id, event.timestamp, data.top, data.bottom, data.left, data.right, data.areaSelectViewFilepath, data.areaSelectViewBase64);
+          return new AreaSelectEvent(event.id, event.timestamp, data.top, data.bottom, data.left, data.right, data.areaSelectViewFilepath, data.areaSelectViewBase64, data.fullViewFilepath, data.fullViewBase64, data.targetKind);
         default:
           throw new Error(`Unknown event type: ${event.type}`);
       }
@@ -285,85 +387,6 @@ export class CreateTestComponent implements AfterViewInit, OnDestroy {
 
     mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
 
-    const processedEvents: IEvent[] = [];
-    let currentKeypressGroup: KeypressEvent[] = [];
-
-    mappedEvents.forEach((event) => {
-      if (event instanceof KeypressEvent) {
-        currentKeypressGroup.push(event);
-      } else {
-        if (currentKeypressGroup.length > 0) {
-          processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
-          currentKeypressGroup = [];
-        }
-        processedEvents.push(event);
-      }
-    });
-
-    if (currentKeypressGroup.length > 0) {
-      processedEvents.push(this.mergeKeypressEvents(currentKeypressGroup));
-    }
-
-    this.processedEvents = processedEvents;
-  }
-
-  private mergeKeypressEvents(keypressEvents: KeypressEvent[]): KeypressEvent {
-    if (keypressEvents.length === 0) {
-      throw new Error('Cannot merge empty keypress events array');
-    }
-
-    if (keypressEvents.length === 1) {
-      return keypressEvents[0];
-    }
-
-    const lastEvent = keypressEvents[keypressEvents.length - 1];
-
-    const combinedKeys = keypressEvents.reduce((allKeys, event) => {
-      return allKeys.concat(event.keys);
-    }, [] as string[]);
-
-    return new KeypressEvent(
-      lastEvent.id,
-      lastEvent.timestamp,
-      combinedKeys.join('')
-    );
-  }
-
-  openGallery(event: ClickEvent): void {
-    this.dialog.open(ImageGalleryComponent, {
-      width: '80%',
-      height: '80%',
-      data: {
-        images: [
-          {
-            src: 'data:image/png;base64,' + event.fullClickViewBase64,
-            title: 'Full View'
-          },
-          {
-            src: 'data:image/png;base64,' + event.maxTrimmedClickViewBase64,
-            title: 'Max Trimmed View'
-          },
-          {
-            src: 'data:image/png;base64,' + event.minTrimmedClickViewBase64,
-            title: 'Min Trimmed View'
-          }
-        ]
-      }
-    });
-  }
-
-  openAreaGallery(event: AreaSelectEvent): void {
-    this.dialog.open(ImageGalleryComponent, {
-      width: '80%',
-      height: '80%',
-      data: {
-        images: [
-          {
-            src: 'data:image/png;base64,' + event.areaSelectViewBase64,
-            title: 'Area Selection'
-          }
-        ]
-      }
-    });
+    this.processedEvents = mappedEvents;
   }
 }

@@ -237,13 +237,13 @@ const handleMessage = (message, sender, sendResponse) => {
         saveState(); // Update last event time in storage
         
         if (message.action === "tests-recorder-click-event") {
-            recordClickEvent(sender, message.window, message.position, message.scroll);
+            recordClickEvent(sender, message.window, message.position, message.scroll, message.metadata);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-mousedown-event") {
-            recordMousedownEvent(sender, message.window, message.position, message.scroll, message.target);
+            recordMousedownEvent(sender, message.window, message.position, message.scroll, message.metadata);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-area-select-event") {
-            recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right);
+            recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right, message.dpr);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-keypress-event") {
             recordKeypressEvent(message.key);
@@ -322,20 +322,25 @@ const viewToBlob = (view) => {
 };
 
 // Record click event
-const recordClickEvent = (sender, windowSize, position, scroll) => {
+const recordClickEvent = (sender, windowSize, position, scroll, metadata) => {
     const adjustedX = position.x + scroll.x;
     const adjustedY = position.y + scroll.y;
     const url = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${adjustedX}&y=${adjustedY}`;
-    
+
     chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (clickView) => {
         if (chrome.runtime.lastError) {
             console.error("[Background] Capture error:", chrome.runtime.lastError.message);
             return;
         }
-        
+
         const formData = new FormData();
         formData.append('clickview', viewToBlob(clickView), 'clickview.png');
-        
+        // Additive target envelope (selectors + DOM/visual classification). The
+        // coordinate params above are unchanged; this is extra context only.
+        if (metadata) {
+            formData.append('metadata', JSON.stringify(metadata));
+        }
+
         fetch(url, { method: 'POST', body: formData })
             .then(() => console.log('[Background] Click event recorded'))
             .catch((error) => console.error('[Background] Click record error:', error));
@@ -343,18 +348,21 @@ const recordClickEvent = (sender, windowSize, position, scroll) => {
 };
 
 // Record mousedown event
-const recordMousedownEvent = (sender, windowSize, position, scroll, target) => {
+const recordMousedownEvent = (sender, windowSize, position, scroll, metadata) => {
     const url = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${position.x}&y=${position.y}`;
-    
+
     chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (clickView) => {
         if (chrome.runtime.lastError) {
             console.error("[Background] Capture error:", chrome.runtime.lastError.message);
             return;
         }
-        
+
         const formData = new FormData();
         formData.append('clickview', viewToBlob(clickView), 'clickview.png');
-        
+        if (metadata) {
+            formData.append('metadata', JSON.stringify(metadata));
+        }
+
         fetch(url, { method: 'POST', body: formData })
             .then(() => console.log('[Background] Mousedown event recorded'))
             .catch((error) => console.error('[Background] Mousedown record error:', error));
@@ -362,8 +370,8 @@ const recordMousedownEvent = (sender, windowSize, position, scroll, target) => {
 };
 
 // Record area select event
-const recordAreaSelectEvent = (sender, top, bottom, left, right) => {
-    const url = `${serverUrl}/recording/events/area-select?guid=${sessionId}&top=${top}&bottom=${bottom}&left=${left}&right=${right}`;
+const recordAreaSelectEvent = (sender, top, bottom, left, right, dpr) => {
+    const url = `${serverUrl}/recording/events/area-select?guid=${sessionId}&top=${top}&bottom=${bottom}&left=${left}&right=${right}&dpr=${dpr || 1}`;
     
     chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (areaSelectView) => {
         if (chrome.runtime.lastError) {
@@ -382,8 +390,10 @@ const recordAreaSelectEvent = (sender, top, bottom, left, right) => {
 
 // Record keypress event
 const recordKeypressEvent = (key) => {
-    const url = `${serverUrl}/recording/events/keypress?guid=${sessionId}&key=${key}`;
-    
+    // Encode the key so control chars (\n), spaces and reserved chars (& = ?)
+    // survive the query string; the backend decodes it once.
+    const url = `${serverUrl}/recording/events/keypress?guid=${sessionId}&key=${encodeURIComponent(key)}`;
+
     fetch(url, { method: 'GET' })
         .then(() => console.log('[Background] Keypress event recorded'))
         .catch((error) => console.error('[Background] Keypress record error:', error));

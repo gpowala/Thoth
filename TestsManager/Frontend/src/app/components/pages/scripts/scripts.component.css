@@ -1,13 +1,20 @@
-.container {
-    padding: 20px;
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 72px 16px;
+  color: var(--text-3);
+  text-align: center;
+  background: var(--surface-1);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
 }
 
-.container h2 {
-    color: #3f51b5;
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 0;
-    letter-spacing: 1px;
-    padding-bottom: 1px;
-    display: inline-block;
+.empty-state mat-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  opacity: 0.6;
 }

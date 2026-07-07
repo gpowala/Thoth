@@ -40,24 +40,10 @@ async function spawnBackend(backendPort) {
     });
 
     backendProcess.stdout.on('data', (data) => {
-        const message = data.toString().trim();
-        console.log(`Backend says: ${message}`);
-
-        if (message.includes("BACKEND_EVENT:SESSION_STARTED") && mainWindow) {
-            mainWindow.webContents.send('BACKEND_EVENT', 'SESSION_STARTED');
-        }
-
-        if (message.includes("BACKEND_EVENT:SESSION_STOPPED") && mainWindow) {
-            mainWindow.webContents.send('BACKEND_EVENT', 'SESSION_STOPPED');
-        }
-
-        if (message.includes("BACKEND_EVENT:CLICK_EVENT_REGISTERED") && mainWindow) {
-            mainWindow.webContents.send('BACKEND_EVENT', 'CLICK_EVENT_REGISTERED');
-        }
-
-        if (message.includes("BACKEND_EVENT:KEYPRESS_EVENT_REGISTERED") && mainWindow) {
-            mainWindow.webContents.send('BACKEND_EVENT', 'KEYPRESS_EVENT_REGISTERED');
-        }
+        // Recording updates are consumed by the frontend by polling the backend
+        // HTTP API directly (see RecordingSessionService), so there is no IPC
+        // event forwarding here. This keeps the app fully runnable in a browser.
+        console.log(`Backend says: ${data.toString().trim()}`);
     });
 
     backendProcess.stderr.on('data', (data) => {

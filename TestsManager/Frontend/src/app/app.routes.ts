@@ -3,11 +3,14 @@ import { RepositoriesComponent } from './components/pages/repositories/repositor
 import { ScriptsComponent } from './components/pages/scripts/scripts.component';
 import { ManageTestsComponent } from './components/pages/manage-tests/manage-tests.component';
 import { CreateTestComponent } from './components/pages/create-test/create-test.component';
+import { ConfigurationComponent } from './components/pages/configuration/configuration.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'repositories', pathMatch: 'full' },
   { path: 'repositories', component: RepositoriesComponent },
   { path: 'scripts', component: ScriptsComponent },
   { path: 'manage-tests', component: ManageTestsComponent },
-  { path: 'create-test', component: CreateTestComponent }
+  { path: 'create-test', component: CreateTestComponent },
+  { path: 'create-test/:guid', component: CreateTestComponent },
+  { path: 'configuration', component: ConfigurationComponent }
 ];

@@ -5,7 +5,9 @@ import os from 'os';
 import { HttpContext } from './utils/http-context';
 import { RecordingService } from './recording/recording-service';
 import { RecordingSession } from './recording/recording-session';
-import { Repository } from './database/context';
+import { parseTargetMeta } from './recording/events/target-meta';
+import { initDatabase, getRepository, getDefaultDatabasePath } from './database/context';
+import { getConfig, setConfig } from './utils/app-config';
 const simpleGit = require('simple-git');
 const fs = require('fs');
 const path = require('path');
@@ -19,6 +21,10 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  // Answer CORS preflight requests (needed for PUT/DELETE from the browser).
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
   next();
 });
 
@@ -173,11 +179,39 @@ app.post('/recording/events/click', upload.single('clickview'), async (req: Requ
   }
 
   try {
-    recordingService.registerClickEvent(guid as string, xCoord, yCoord, req.file.buffer);
+    // Optional additive target envelope (selectors + DOM/visual classification).
+    const target = parseTargetMeta(req.body?.metadata);
+    recordingService.registerClickEvent(guid as string, xCoord, yCoord, req.file.buffer, target);
     res.status(200).send('Image trimmed and saved successfully.');
   } catch (error) {
     console.error('Error processing image:', error);
     res.status(500).send('Error processing image.');
+  }
+});
+
+app.post('/recording/events/area-select', upload.single('areaSelectView'), async (req: Request, res: Response) => {
+  const { guid, top, bottom, left, right, dpr } = req.query;
+
+  const topCoord = Number(top);
+  const bottomCoord = Number(bottom);
+  const leftCoord = Number(left);
+  const rightCoord = Number(right);
+  const devicePixelRatio = Number(dpr) || 1;
+
+  if ([topCoord, bottomCoord, leftCoord, rightCoord].some(isNaN)) {
+    return res.status(400).send('Missing or invalid top/bottom/left/right parameters. Must be numbers.');
+  }
+
+  if (!req.file) {
+    return res.status(400).send('No image file uploaded.');
+  }
+
+  try {
+    recordingService.registerAreaSelectEvent(guid as string, topCoord, bottomCoord, leftCoord, rightCoord, req.file.buffer, devicePixelRatio);
+    res.status(200).send('Area select event registered successfully.');
+  } catch (error) {
+    console.error('Error processing area-select image:', error);
+    res.status(500).send('Error processing area-select image.');
   }
 });
 
@@ -187,27 +221,35 @@ app.get('/recording/events/keypress', async (req: Request, res: Response) => {
     res.status(200).send('Keypress event registered successfully.');
 });
 
-const requireRepositoryExists = (repository: Repository) => {
+const requireRepositoryExists = (repository: any) => {
     if (repository == null)
         throw Error('Repository does not exist');
 }
 
-const cloneGitRepository = async (repository: Repository) => {
+const buildAuthenticatedUrl = (repository: any): string => {
+    return repository.url.replace(
+        'https://',
+        `https://${encodeURIComponent(repository.user)}:${encodeURIComponent(repository.token)}@`
+    );
+};
+
+const cloneGitRepository = async (repository: any) => {
     try {
-        if (!fs.existsSync(repository.directory)) {
-            fs.mkdirSync(repository.directory, { recursive: true });
-        }
-        
-        const remoteUrl = repository.url.replace(
-            'https://', 
-            `https://${repository.user}:${repository.token}@`
-        );
-        
-        const git = simpleGit(repository.directory);
-        if (fs.existsSync(path.join(repository.directory, '.git'))) {
-            await git.pull('origin', 'main');
+        const targetDir = repository.directory;
+        const authUrl = buildAuthenticatedUrl(repository);
+
+        if (fs.existsSync(path.join(targetDir, '.git'))) {
+            // Existing repository — pull the current branch using the provided credentials.
+            const git = simpleGit(targetDir);
+            const branch = (await git.revparse(['--abbrev-ref', 'HEAD'])).trim();
+            await git.pull(authUrl, branch);
         } else {
-            await git.clone(remoteUrl, repository.directory);
+            // New repository — clone into the target directory from its parent.
+            const parentDir = path.dirname(targetDir);
+            if (!fs.existsSync(parentDir)) {
+                fs.mkdirSync(parentDir, { recursive: true });
+            }
+            await simpleGit(parentDir).clone(authUrl, targetDir);
         }
     } catch (error) {
         console.error(`Error cloning repository: ${error}`);
@@ -215,7 +257,7 @@ const cloneGitRepository = async (repository: Repository) => {
     }
 }
 
-const initializeThotRepository = async (repository: Repository) => {
+const initializeThotRepository = async (repository: any) => {
     try {
         const thotDirectory = path.join(repository.directory, 'thot');
 
@@ -254,22 +296,32 @@ app.get('/repository', async (req: Request, res: Response) => {
     }
 
     try {
-        let repository = await Repository.findOne({ where: { Name: name } });
+        const Repository = getRepository();
+
+        // If the selected folder is already a git repo, use it directly.
+        // Otherwise treat it as the parent and clone into <directory>/<name>.
+        const selectedDirectory = directory as string;
+        const isExisting = fs.existsSync(path.join(selectedDirectory, '.git'));
+        const targetDirectory = isExisting
+            ? selectedDirectory
+            : path.join(selectedDirectory, String(name));
+
+        let repository: any = await Repository.findOne({ where: { name: name as string } });
         if (!repository) {
             repository = await Repository.create({
                 name: name as string,
                 url: url as string,
                 user: user as string,
                 token: token as string,
-                directory: directory as string
+                directory: targetDirectory
             });
         }
 
         requireRepositoryExists(repository);
         await cloneGitRepository(repository);
 
-        initializeThotRepository(repository);
-        
+        await initializeThotRepository(repository);
+
         res.status(201).json(repository);
     } catch (error) {
         console.error('Error creating repository:', error);
@@ -279,7 +331,7 @@ app.get('/repository', async (req: Request, res: Response) => {
 
 app.get('/repositories', async (req: Request, res: Response) => {
     try {
-        const repositories = await Repository.findAll();
+        const repositories = await getRepository().findAll();
         res.status(200).json(repositories);
     } catch (error) {
         console.error('Error fetching repositories:', error);
@@ -295,7 +347,7 @@ app.delete('/repository', async (req: Request, res: Response) => {
     }
 
     try {
-        const repository = await Repository.findByPk(id as string);
+        const repository = await getRepository().findByPk(id as string);
 
         if (!repository) {
             return res.status(404).json({ error: 'Repository not found' });
@@ -306,6 +358,113 @@ app.delete('/repository', async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error deleting repository:', error);
         res.status(500).json({ error: 'An error occurred while deleting the repository' });
+    }
+});
+
+const stripUrlCredentials = (remoteUrl: string): { url: string; user: string } => {
+    try {
+        const parsed = new URL(remoteUrl);
+        const user = parsed.username ? decodeURIComponent(parsed.username) : '';
+        parsed.username = '';
+        parsed.password = '';
+        return { url: parsed.toString(), user };
+    } catch {
+        // Non-URL remotes (e.g. SSH git@host:org/repo.git) — return as-is.
+        return { url: remoteUrl, user: '' };
+    }
+};
+
+app.get('/repository/inspect', async (req: Request, res: Response) => {
+    const requestedPath = (req.query.path as string | undefined)?.trim();
+    if (!requestedPath) {
+        return res.status(400).json({ error: 'A path is required.' });
+    }
+
+    try {
+        const isGitRepo = fs.existsSync(path.join(requestedPath, '.git'));
+        if (!isGitRepo) {
+            return res.status(200).json({ isGitRepo: false });
+        }
+
+        const git = simpleGit(requestedPath);
+        const remotes = await git.getRemotes(true);
+        const origin = remotes.find((r: any) => r.name === 'origin') ?? remotes[0];
+        const fetchUrl: string = origin?.refs?.fetch ?? '';
+        let { url, user } = fetchUrl ? stripUrlCredentials(fetchUrl) : { url: '', user: '' };
+
+        // Fallback: if the remote URL has no embedded username, use the local
+        // git identity (user.name) as a hint for the access user.
+        if (!user) {
+            try {
+                user = (await git.raw(['config', '--get', 'user.name'])).trim();
+            } catch {
+                // No user.name configured — leave it blank.
+            }
+        }
+
+        let branch = '';
+        try {
+            branch = (await git.revparse(['--abbrev-ref', 'HEAD'])).trim();
+        } catch {
+            branch = '';
+        }
+
+        return res.status(200).json({
+            isGitRepo: true,
+            name: path.basename(requestedPath),
+            url,
+            user,
+            branch
+        });
+    } catch (error) {
+        console.error('Error inspecting repository:', error);
+        return res.status(400).json({ error: 'Failed to inspect the selected directory.' });
+    }
+});
+
+app.get('/configuration', async (req: Request, res: Response) => {
+    const config = getConfig();
+    res.status(200).json({
+        databasePath: config.databasePath,
+        defaultDatabasePath: getDefaultDatabasePath()
+    });
+});
+
+app.put('/configuration', async (req: Request, res: Response) => {
+    const databasePath = (req.body?.databasePath as string | undefined)?.trim();
+
+    if (!databasePath) {
+        return res.status(400).json({ error: 'databasePath is required.' });
+    }
+
+    const parentDir = path.dirname(databasePath);
+    if (!fs.existsSync(parentDir)) {
+        return res.status(400).json({ error: `Directory does not exist: ${parentDir}` });
+    }
+
+    try {
+        // Changing the database ends all active recording sessions.
+        const killed = recordingService.destroyAllSessions();
+
+        // Persist and hot-reconnect to the new database.
+        setConfig({ databasePath });
+        await initDatabase(databasePath);
+
+        console.log(`Database switched to ${databasePath} (${killed} session(s) terminated).`);
+        res.status(200).json({
+            databasePath,
+            defaultDatabasePath: getDefaultDatabasePath(),
+            terminatedSessions: killed
+        });
+    } catch (error) {
+        console.error('Error updating configuration:', error);
+        // Attempt to restore the previous database connection.
+        try {
+            await initDatabase(getConfig().databasePath);
+        } catch (restoreError) {
+            console.error('Error restoring previous database connection:', restoreError);
+        }
+        res.status(400).json({ error: 'Failed to switch database. Previous database restored.' });
     }
 });
 
@@ -343,6 +502,16 @@ app.get('/filesystem/list', async (req: Request, res: Response) => {
     }
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+const bootstrap = async () => {
+  const config = getConfig();
+  await initDatabase(config.databasePath);
+
+  app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+};
+
+bootstrap().catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });

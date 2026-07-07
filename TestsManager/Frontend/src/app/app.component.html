@@ -1,6 +1,8 @@
-<div style="display: flex; height: 100vh;">
-    <div [style.width]="navBarExpanded ? 'min(250px, 20%)' : '80px'" style="background-color: #c4d7ff; color: #3f51b5; transition: width 0.3s ease;">
-        <app-main-nav-bar (navBarToggled)="onNavBarToggled($event)"></app-main-nav-bar>
-    </div>
-    <div [style.width]="navBarExpanded ? 'calc(100% - min(250px, 20%))' : 'calc(100% - 80px)'" style="overflow-y: auto; scrollbar-width: thin; scrollbar-color: #3f51b5 #c4d7ff; transition: width 0.3s ease;"><router-outlet /></div>
+<div class="app-shell">
+  <aside class="app-sidebar" [class.collapsed]="!navBarExpanded">
+    <app-main-nav-bar (navBarToggled)="onNavBarToggled($event)"></app-main-nav-bar>
+  </aside>
+  <main class="app-content">
+    <router-outlet />
+  </main>
 </div>

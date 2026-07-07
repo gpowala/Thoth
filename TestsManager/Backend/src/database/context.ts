@@ -1,81 +1,86 @@
-import { Sequelize } from 'sequelize';
+import { Sequelize, DataTypes, ModelStatic, Model } from 'sequelize';
 import path from 'path';
 
-// Define the database file path
-const dbPath = path.join(__dirname, '..', '..', 'thoth_tests_manager.sqlite');
+let sequelize: Sequelize | null = null;
+let RepositoryModel: ModelStatic<Model> | null = null;
 
-// Create Sequelize instance
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: dbPath,
-  logging: false // Set to console.log to see SQL queries
-});
+const defineRepository = (instance: Sequelize): ModelStatic<Model> => {
+  return instance.define('Repository', {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    url: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    user: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    token: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    directory: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  }, {
+    tableName: 'repositories',
+  });
+};
 
-// Define the Repositories model
-import { DataTypes, Model } from 'sequelize';
+export const getDefaultDatabasePath = (): string => {
+  return path.join(__dirname, '..', '..', 'thoth_tests_manager.sqlite');
+};
 
+/**
+ * (Re)initialize the database connection against the given sqlite file.
+ * Safe to call multiple times — the previous connection is closed first,
+ * which lets the app switch databases at runtime (hot-reconnect).
+ */
+export async function initDatabase(dbPath?: string): Promise<void> {
+  const storage = dbPath && dbPath.trim() ? dbPath.trim() : getDefaultDatabasePath();
 
-
-class Repository extends Model {
-  public id!: number;
-  public name!: string;
-  public directory!: string;
-  public description!: string;
-  public url!: string;
-  public user!: string;
-  public token!: string;
-}
-
-Repository.init({
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  name: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  url: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  user: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  token: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  directory: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-}, {
-  sequelize,
-  modelName: 'Repository',
-  tableName: 'repositories',
-});
-
-// Sync the model with the database
-sequelize.sync();
-
-// Test the connection
-async function testConnection() {
-  try {
-    await sequelize.authenticate();
-    console.log('Connection to the database has been established successfully.');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
+  if (sequelize) {
+    try {
+      await sequelize.close();
+    } catch (error) {
+      console.error('Error closing previous database connection:', error);
+    }
+    sequelize = null;
+    RepositoryModel = null;
   }
+
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage,
+    logging: false,
+  });
+
+  RepositoryModel = defineRepository(sequelize);
+
+  await sequelize.authenticate();
+  await sequelize.sync();
+  console.log(`Database connection established at: ${storage}`);
 }
 
-// Initialize the database connection
-export async function initDatabase() {
-  await testConnection();
-  // Here you can add any additional initialization logic,
-  // such as syncing models or running migrations
+export function getSequelize(): Sequelize {
+  if (!sequelize) {
+    throw new Error('Database has not been initialized. Call initDatabase() first.');
+  }
+  return sequelize;
 }
 
-export { sequelize, Repository };
+export function getRepository(): ModelStatic<Model> {
+  if (!RepositoryModel) {
+    throw new Error('Database has not been initialized. Call initDatabase() first.');
+  }
+  return RepositoryModel;
+}
