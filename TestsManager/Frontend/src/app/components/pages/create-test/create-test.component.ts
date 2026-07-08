@@ -215,6 +215,7 @@ export class CreateTestComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Generate the Playwright (Python) test from the recorded events. */
   generatedScript: string | null = null;
+  bundlePath: string | null = null;
   scriptCopied = false;
 
   generateScript(): void {
@@ -224,6 +225,7 @@ export class CreateTestComponent implements OnInit, AfterViewInit, OnDestroy {
     this.recordingSessionService.generateScript(this.session.guid, this.session.name).subscribe({
       next: (result) => {
         this.generatedScript = result.script;
+        this.bundlePath = result.bundlePath ?? null;
         this.cdr.detectChanges();
       },
       error: (error) => console.error('Error generating script:', error)

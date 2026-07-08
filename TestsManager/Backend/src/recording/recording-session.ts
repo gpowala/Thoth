@@ -27,10 +27,10 @@ export class RecordingSession extends EventEmitter {
 
     private httpContext: HttpContext;
 
-    // Buffer for the in-progress typing group. Nothing is pushed to
-    // recordedEvents until the group is finalized, so recordedEvents stays
-    // append-only (the frontend polls it incrementally by index).
-    private pendingKeypress: { keys: string; timestamp: Date } | null = null;
+    // Buffer for the in-progress keystroke run — either typed text or a run of
+    // Backspaces. Nothing is pushed to recordedEvents until the run is finalized,
+    // so recordedEvents stays append-only (the frontend polls it by index).
+    private pendingKeypress: { kind: 'text' | 'backspace'; text: string; count: number; timestamp: Date } | null = null;
     private keypressFlushTimer: NodeJS.Timeout | null = null;
 
     constructor(
@@ -200,19 +200,33 @@ export class RecordingSession extends EventEmitter {
 
     public async registerKeypressEvent(key: string, clientTime?: number): Promise<void> {
         try {
+            // Backspace runs collapse into one "[Backspace ×N]" step (visual/canvas
+            // text entry; DOM fields suppress these and rely on the final value).
+            if (key === 'Backspace') {
+                if (this.pendingKeypress && this.pendingKeypress.kind === 'backspace') {
+                    this.pendingKeypress.count += 1;
+                } else {
+                    this.flushPendingKeypress();
+                    this.pendingKeypress = { kind: 'backspace', text: '', count: 1, timestamp: this.tsOf(clientTime) };
+                }
+                this.scheduleKeypressFlush();
+                return;
+            }
+
             if (this.isActionKey(key)) {
-                // Named action key (e.g. Enter as submit, Tab, Escape) — a discrete
-                // step, not part of the typed text. Ends the current typing group.
+                // Named action key (Enter/Tab/Escape/arrows/...) — a discrete step.
                 this.flushPendingKeypress();
                 this.recordedEvents.push(new KeypressEvent(this.tsOf(clientTime), `[${key}]`));
                 return;
             }
+
             // Printable character (including the "\n" that Enter-in-a-textarea was
             // translated to) — folded into the current typing group.
-            if (this.pendingKeypress) {
-                this.pendingKeypress.keys += key;
+            if (this.pendingKeypress && this.pendingKeypress.kind === 'text') {
+                this.pendingKeypress.text += key;
             } else {
-                this.pendingKeypress = { keys: key, timestamp: this.tsOf(clientTime) };
+                this.flushPendingKeypress();
+                this.pendingKeypress = { kind: 'text', text: key, count: 0, timestamp: this.tsOf(clientTime) };
             }
             this.scheduleKeypressFlush();
         } catch (error) {
@@ -235,14 +249,17 @@ export class RecordingSession extends EventEmitter {
         this.keypressFlushTimer = setTimeout(() => this.flushPendingKeypress(), KEYPRESS_FLUSH_MS);
     }
 
-    // Finalize the buffered typing group as a single immutable KeypressEvent.
+    // Finalize the buffered keystroke run as a single immutable KeypressEvent.
     private flushPendingKeypress(): void {
         if (this.keypressFlushTimer) {
             clearTimeout(this.keypressFlushTimer);
             this.keypressFlushTimer = null;
         }
         if (this.pendingKeypress) {
-            this.recordedEvents.push(new KeypressEvent(this.pendingKeypress.timestamp, this.pendingKeypress.keys));
+            const keys = this.pendingKeypress.kind === 'backspace'
+                ? `[Backspace ×${this.pendingKeypress.count}]`
+                : this.pendingKeypress.text;
+            this.recordedEvents.push(new KeypressEvent(this.pendingKeypress.timestamp, keys));
             this.pendingKeypress = null;
         }
     }

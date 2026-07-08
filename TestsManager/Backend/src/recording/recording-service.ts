@@ -8,7 +8,9 @@ import { ScrollEvent } from './events/scroll-event';
 import { InputEvent, InputControlType } from './events/input-event';
 import { NavigationEvent, NavigationType } from './events/navigation-event';
 import { TargetMeta } from './events/target-meta';
-import { generatePlaywrightScript } from './playwright-codegen';
+import { generatePlaywrightProject } from './playwright-codegen';
+import fs from 'fs';
+import path from 'path';
 
 export class RecordingService {
     private sessions: Map<string, RecordingSession>;
@@ -90,11 +92,26 @@ export class RecordingService {
         this.sessions.get(guid)?.registerNavigationEvent(url, navType, viewStream, clientTime);
     }
 
-    public generateScript(guid: string, testName?: string): string {
+    // Generate the Playwright-Python project (script + OpenCV helper + baseline
+    // PNGs) and write it to disk as a runnable bundle. Returns the script text
+    // (for UI preview) and the bundle path.
+    public generateProject(guid: string, testName?: string): { script: string; bundlePath: string } {
         // getRecordedEvents is annotated IEvent[] but yields serialized {type,data}
         // objects, which is exactly what the generator consumes.
         const events = this.getRecordedEvents(guid) as any;
-        return generatePlaywrightScript(events, testName);
+        const { script, helper, assets } = generatePlaywrightProject(events, testName);
+
+        const bundlePath = `C:/tests/generated/${guid}`;
+        fs.mkdirSync(bundlePath, { recursive: true });
+        fs.writeFileSync(path.join(bundlePath, 'thoth_visual.py'), helper);
+        fs.writeFileSync(path.join(bundlePath, 'test.py'), script);
+        for (const asset of assets) {
+            const assetPath = path.join(bundlePath, asset.relPath);
+            fs.mkdirSync(path.dirname(assetPath), { recursive: true });
+            fs.writeFileSync(assetPath, Buffer.from(asset.base64, 'base64'));
+        }
+
+        return { script, bundlePath };
     }
 
     public getRecordedEvents(guid: string): IEvent[] {

@@ -288,12 +288,13 @@ No recording-time data depends on this choice.
 
 | Decision | Status | Choice |
 |----------|--------|--------|
-| Coordinate model | **Locked** | Preserve current top-document `pageX*dpr + scroll` pipeline; no pointer tracker; no `all_frames`. |
-| Iframe coordinates | **Locked** | Not needed — top-most viewport coordinates + whole-page screenshot only. |
+| Coordinate model | **Locked** | Top frame keeps the original `pageX*dpr + scroll` pipeline unchanged. Sub-frames (see iframe capture) translate frame-local viewport coords into top-viewport coords and report zero scroll. |
+| Iframe capture | **Locked (revised Phase 2)** | Superseded the earlier "no `all_frames`" call: top-frame-only injection cannot see events inside iframes at all (esp. cross-origin) — keyboard was uncaptured and clicks had no coordinates. Now `all_frames: true`; every frame captures its own events, and each frame resolves its cumulative top-viewport offset via a cross-origin `postMessage` handshake with ancestors (re-pushed on scroll/resize) so clicks still map to top-viewport coordinates for the whole-tab screenshot crop. Session mgmt / keep-alive / area-select overlay remain top-only. |
 | Screenshot timing | **Locked** | Per-event policy (§5); grouped events capture once at flush; no screenshots for mouse-move. |
 | Storage | **Locked** | Full PNG immutable source of truth; crops derived from full + geometry. |
 | Grouping location | **Locked** | Move to backend. |
 | Navigation semantics | **Locked** | Navigation events represent only user-initiated URL changes (address bar / bookmark / reload / initial page), filtered by `webNavigation` transition type. Consequential navigations (click/link/form-submit/redirect/SPA route) are NOT recorded — they are the originating click/input step. Derived/technical events must never collapse or replace real user operations. |
 | Text editing / Backspace | **Locked (modality-aware)** | DOM fields: rely on final value (`input`/`change`) — no keystroke reconstruction, Backspace not replayed. Visual/canvas fields: keystroke capture via `keydown` with grouped `[Backspace ×N]` (size = count). |
-| Visual matching engine | **Deferred to Phase 2** | OpenCV (leaning) vs. Playwright native; storage is forward-compatible with both. |
-| Codegen home | **Open** | Node backend (leaning) vs. separate Python service. |
+| Visual matching engine | **Locked** | OpenCV template matching. Required (not optional): `visual_click` must *locate* a recorded crop and click it, which Playwright native `to_have_screenshot` cannot do. Same stack serves locate + wait-for-state + assert + Phase 4 self-heal. Generated tests depend on `opencv-python` + `numpy`. |
+| Codegen home | **Locked** | Node backend (template strings). `generateProject` writes a runnable bundle (`test.py` + `thoth_visual.py` + `baselines/`) under `C:/tests/generated/<guid>`. |
+| Per-step visual threshold | **Deferred to Phase 3** | Codegen emits per-call thresholds via `VISUAL_MATCH_THRESHOLD`/`VISUAL_STATE_THRESHOLD` constants (tunable in the generated script). Editable per-step tolerance in the review UI lands with the Phase 3 review-UI overrides. |

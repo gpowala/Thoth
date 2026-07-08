@@ -11,8 +11,17 @@ window.thothRecorder = window.thothRecorder || {
     // Time of the last content keystroke into an editable field. Used to stamp the
     // input/change event just before the key that commits it (e.g. Enter), so the
     // "Text: ..." step orders before the "Keypress: Enter" step.
-    lastEditableKeyTime: 0
+    lastEditableKeyTime: 0,
+    // This frame's cumulative offset within the TOP viewport (CSS px). Resolved via
+    // a postMessage handshake with ancestor frames so clicks inside (even
+    // cross-origin) iframes translate to top-viewport coordinates.
+    frameOffset: { x: 0, y: 0 }
 };
+
+// The content script runs in every frame (manifest all_frames). Session
+// management, keep-alive and the area-select overlay stay top-only; every frame
+// captures its own events and translates coordinates to the top viewport.
+const THOTH_IS_TOP = (window === window.top);
 
 const CLICK_PRIORITY_DELAY = 350;
 const MAX_RETRY_ATTEMPTS = 5;
@@ -83,12 +92,17 @@ const wakeUpAndCheckSession = async () => {
 
 // Safely send messages to background script with retry
 const safeSendMessage = (message, logMessage, retryOnFail = true) => {
+    // Never record interaction events on Thoth's own UI (session/lifecycle
+    // messaging goes through chrome.runtime directly, so it is unaffected).
+    if (window.thothRecorder.ownApp) {
+        return false;
+    }
     if (!checkExtensionContext()) {
         window.thothRecorder.extensionContextValid = false;
         console.log('[Thoth] Cannot send message - context invalid');
         return false;
     }
-    
+
     try {
         chrome.runtime.sendMessage(message, (response) => {
             if (chrome.runtime.lastError) {
@@ -247,6 +261,33 @@ const thothBuildTargetMeta = (el) => {
     }
 };
 
+// Pointer position + scroll for a mouse event, in the coordinate space the
+// backend expects (device px). The TOP frame keeps its original, validated math
+// (page coords + scroll). Sub-frames translate frame-local viewport coords into
+// TOP-viewport coords using the resolved frame offset, and report zero scroll
+// (the offset already accounts for it), so the whole-tab screenshot crop lands
+// on the right spot.
+const thothPointerCoords = (event) => {
+    const dpr = window.devicePixelRatio || 1;
+    if (THOTH_IS_TOP) {
+        return {
+            position: { x: parseInt(event.pageX * dpr), y: parseInt(event.pageY * dpr) },
+            scroll: { x: parseInt(window.scrollX * dpr), y: parseInt(window.scrollY * dpr) }
+        };
+    }
+    const off = window.thothRecorder.frameOffset || { x: 0, y: 0 };
+    return {
+        position: { x: parseInt((event.clientX + off.x) * dpr), y: parseInt((event.clientY + off.y) * dpr) },
+        scroll: { x: 0, y: 0 }
+    };
+};
+
+// True when the event landed on a nested frame element. That interaction belongs
+// to the child frame's own content script (all_frames) — recording it here too
+// would duplicate the step (and the parent gets zeroed coords for cross-origin
+// frames, hence the (0,0) ghost click).
+const thothIsFrameElement = (el) => !!el && (el.tagName === 'IFRAME' || el.tagName === 'FRAME');
+
 // Click event handler
 const clickHandler = function(event) {
     if (mousedownProcessingTimer) {
@@ -254,23 +295,20 @@ const clickHandler = function(event) {
         mousedownProcessingTimer = null;
         pendingMousedownEvent = null;
     }
-    
+
+    if (thothIsFrameElement(event.target)) return;
+
     const dpr = window.devicePixelRatio || 1;
-    
+    const coords = thothPointerCoords(event);
+
     safeSendMessage({
         action: "tests-recorder-click-event",
         window: {
             width: parseInt(window.innerWidth * dpr),
             height: parseInt(window.innerHeight * dpr)
         },
-        position: {
-            x: parseInt(event.pageX * dpr),
-            y: parseInt(event.pageY * dpr)
-        },
-        scroll: {
-            x: parseInt(window.scrollX * dpr),
-            y: parseInt(window.scrollY * dpr)
-        },
+        position: coords.position,
+        scroll: coords.scroll,
         target: {
             tagName: event.target.tagName,
             id: event.target.id,
@@ -283,21 +321,18 @@ const clickHandler = function(event) {
 
 // Mousedown event handler (fallback)
 const mousedownHandler = function(event) {
+    if (thothIsFrameElement(event.target)) return;
+
     const dpr = window.devicePixelRatio || 1;
+    const coords = thothPointerCoords(event);
     pendingMousedownEvent = {
         action: "tests-recorder-mousedown-event",
         window: {
             width: parseInt(window.innerWidth * dpr),
             height: parseInt(window.innerHeight * dpr)
         },
-        position: {
-            x: parseInt(event.pageX * dpr),
-            y: parseInt(event.pageY * dpr)
-        },
-        scroll: {
-            x: parseInt(window.scrollX * dpr),
-            y: parseInt(window.scrollY * dpr)
-        },
+        position: coords.position,
+        scroll: coords.scroll,
         target: {
             tagName: event.target.tagName,
             id: event.target.id,
@@ -330,30 +365,17 @@ const thothIsEditableDomField = (el) => {
     return thothClassifyTarget(el) !== 'visual';
 };
 
-// Keypress event handler
+// Keypress handler — printable characters only. Named keys (Enter, Tab,
+// Backspace, arrows, ...) don't reliably fire keypress and are handled in
+// keydown instead.
 const keypressHandler = function(event) {
-    let key = event.key;
-
-    // Enter is ambiguous: a newline inside a multi-line field vs. a submit/action
-    // everywhere else. Inside a textarea/contenteditable (without a submit
-    // modifier) we treat it as text (\n, folded into the typing group); otherwise
-    // it stays "Enter" and the backend records it as a discrete [Enter] step.
-    if (key === 'Enter') {
-        const t = event.target;
-        const isMultiline = !!t && (t.tagName === 'TEXTAREA' || t.isContentEditable === true);
-        const hasSubmitModifier = event.ctrlKey || event.metaKey;
-        if (isMultiline && !hasSubmitModifier) {
-            key = '\n';
-        }
-    }
+    const key = event.key;
+    if (!key || key.length !== 1) return;
 
     // For DOM text fields the `change` event records the authoritative final
-    // value, so drop printable keystrokes (incl. the translated newline) to avoid
-    // double-recording. Action keys (multi-char names like Enter/Tab) still fire.
-    const isActionKey = key.length > 1;
-    if (!isActionKey && thothIsEditableDomField(event.target)) {
-        // Remember when the field was last edited so the input/change event can be
-        // ordered just before whatever key eventually commits it.
+    // value, so drop printable keystrokes to avoid double-recording. Remember the
+    // edit time so the input/change event orders before whatever key commits it.
+    if (thothIsEditableDomField(event.target)) {
         window.thothRecorder.lastEditableKeyTime = Date.now();
         return;
     }
@@ -371,7 +393,8 @@ const keypressHandler = function(event) {
 // window.scrollX/Y stays 0). Capture-phase listener so inner scrolls reach us.
 let thothScrollTimer = null;
 const scrollHandler = function(event) {
-    if (!window.thothRecorder.isRecording) return;
+    // Not gated on the local isRecording flag (which is unreliable in sub-frames);
+    // the background is the single authority and drops events when not recording.
     const target = event.target;
     if (thothScrollTimer) clearTimeout(thothScrollTimer);
     thothScrollTimer = setTimeout(() => {
@@ -397,8 +420,9 @@ const scrollHandler = function(event) {
 };
 
 // Change handler — the committed value of a form control (authoritative for text).
+// Not gated on the local isRecording flag (unreliable in sub-frames); the
+// background gates and drops events when not recording.
 const changeHandler = function(event) {
-    if (!window.thothRecorder.isRecording) return;
     const t = event.target;
     if (!t || !t.tagName) return;
 
@@ -448,12 +472,60 @@ const changeHandler = function(event) {
     }, 'Input event captured');
 };
 
-// Keydown handler for hotkeys
+// Bare modifier presses we never record as their own step.
+const THOTH_MODIFIER_KEYS = new Set([
+    'Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'NumLock', 'ScrollLock',
+    'ContextMenu', 'OS', 'AltGraph', 'Dead'
+]);
+
+// Keydown handler — the area-select hotkey plus all named (non-printable) keys.
 const keydownHandler = function(event) {
-    if (event.altKey && event.shiftKey && event.code === "KeyW") {
+    // Hotkey: open the area-select overlay (top frame only — it spans the tab).
+    if (THOTH_IS_TOP && event.altKey && event.shiftKey && event.code === "KeyW") {
         createOverlay();
         event.preventDefault();
+        return;
     }
+
+    // Not gated on the local isRecording flag (unreliable in sub-frames); the
+    // background is the single authority and drops events when not recording.
+    const key = event.key;
+    if (!key || key.length === 1) return;        // printable handled by keypress
+    if (THOTH_MODIFIER_KEYS.has(key)) return;    // bare modifier press
+
+    const t = event.target;
+    const editable = thothIsEditableDomField(t);
+
+    const send = () => safeSendMessage({
+        action: "tests-recorder-keypress-event",
+        key: key,
+        clientTime: Date.now()
+    }, 'Keypress event captured');
+
+    if (key === 'Enter') {
+        const isMultiline = !!t && (t.tagName === 'TEXTAREA' || t.isContentEditable === true);
+        if (editable && isMultiline && !(event.ctrlKey || event.metaKey)) {
+            // Newline inside a DOM multiline field → part of the final value.
+            window.thothRecorder.lastEditableKeyTime = Date.now();
+            return;
+        }
+        send(); // submit / activate
+        return;
+    }
+
+    if (editable) {
+        // DOM field: Tab/Escape are navigation actions; editing keys (Backspace,
+        // Delete, arrows, Home/End/Page...) fold into the authoritative value.
+        if (key === 'Tab' || key === 'Escape') {
+            send();
+        } else {
+            window.thothRecorder.lastEditableKeyTime = Date.now();
+        }
+        return;
+    }
+
+    // Visual / non-DOM target: record every named key (Backspace grouped by backend).
+    send();
 };
 
 // Visibility change handler - CRITICAL: wake up background when tab becomes visible
@@ -545,6 +617,88 @@ function createOverlay() {
     });
 }
 
+// ---------------------------------------------------------------------------
+// Frame-offset resolution.
+// Each frame learns its cumulative offset within the TOP viewport by asking its
+// parent (postMessage works cross-origin). The parent replies with its own
+// offset plus the child <iframe>'s position; the child then does the same for
+// its own children. Offsets are re-pushed on scroll/resize so clicks translate
+// accurately as the page moves.
+// ---------------------------------------------------------------------------
+
+// Tell each direct child frame its cumulative top-viewport offset.
+const thothBroadcastOffsets = () => {
+    const frames = document.querySelectorAll('iframe, frame');
+    const base = window.thothRecorder.frameOffset || { x: 0, y: 0 };
+    frames.forEach((f) => {
+        try {
+            const rect = f.getBoundingClientRect();
+            f.contentWindow.postMessage({
+                __thoth: true,
+                type: 'thoth-offset',
+                offset: { x: base.x + rect.left, y: base.y + rect.top }
+            }, '*');
+        } catch (e) {
+            // Cross-origin contentWindow access for postMessage is allowed; ignore failures.
+        }
+    });
+};
+
+// Ask our parent to (re)send our offset.
+const thothRequestOffset = () => {
+    if (THOTH_IS_TOP) return;
+    try {
+        window.parent.postMessage({ __thoth: true, type: 'thoth-offset-request' }, '*');
+    } catch (e) { /* ignore */ }
+};
+
+const thothSetupFrameOffset = () => {
+    if (window.thothRecorder.frameOffsetSet) return;
+    window.thothRecorder.frameOffsetSet = true;
+
+    window.addEventListener('message', (event) => {
+        const data = event.data;
+        if (!data || data.__thoth !== true) return;
+
+        if (data.type === 'thoth-offset-request') {
+            // A direct child is (re)requesting its offset — find it and reply.
+            const frames = document.querySelectorAll('iframe, frame');
+            const base = window.thothRecorder.frameOffset || { x: 0, y: 0 };
+            for (const f of frames) {
+                if (f.contentWindow === event.source) {
+                    try {
+                        const rect = f.getBoundingClientRect();
+                        event.source.postMessage({
+                            __thoth: true,
+                            type: 'thoth-offset',
+                            offset: { x: base.x + rect.left, y: base.y + rect.top }
+                        }, '*');
+                    } catch (e) { /* ignore */ }
+                    break;
+                }
+            }
+        } else if (data.type === 'thoth-offset' && data.offset) {
+            // Our offset changed; cache it and propagate to our own children.
+            window.thothRecorder.frameOffset = data.offset;
+            thothBroadcastOffsets();
+        }
+    });
+
+    // When this frame's layout moves, children's absolute offsets change.
+    window.addEventListener('scroll', thothBroadcastOffsets, true);
+    window.addEventListener('resize', thothBroadcastOffsets);
+
+    if (!THOTH_IS_TOP) {
+        thothRequestOffset();
+        // Retry a few times in case ancestors initialised slightly later.
+        let tries = 0;
+        const retry = setInterval(() => {
+            thothRequestOffset();
+            if (++tries >= 5) clearInterval(retry);
+        }, 500);
+    }
+};
+
 // Set up message listener for ping and session notifications
 const setupMessageListener = () => {
     if (!checkExtensionContext()) return;
@@ -578,10 +732,29 @@ const setupMessageListener = () => {
     }
 };
 
+// True when this page is Thoth's own UI (tagged in index.html). We never record
+// the recorder application itself — otherwise the setup/connection clicks show
+// up as the first steps of every session.
+const thothIsOwnApp = () => {
+    try {
+        return !!document.querySelector('meta[name="thoth-recorder-app"]');
+    } catch (e) {
+        return false;
+    }
+};
+
 // Initialize function
 function initialize() {
     console.log('[Thoth] Initializing content script...');
-    
+
+    // On Thoth's own UI we still run session/lifecycle handling (so connecting and
+    // keep-alive work), but never SEND interaction events (see safeSendMessage) —
+    // that's what keeps the setup/connection clicks out of the recording.
+    window.thothRecorder.ownApp = thothIsOwnApp();
+    if (window.thothRecorder.ownApp) {
+        console.log('[Thoth] Thoth recorder UI detected — event capture suppressed on this page.');
+    }
+
     // Remove old handlers if they exist (for clean re-initialization)
     if (window.thothRecorder.handlers.click) {
         document.removeEventListener('click', window.thothRecorder.handlers.click, true);
@@ -593,7 +766,7 @@ function initialize() {
         document.removeEventListener('keypress', window.thothRecorder.handlers.keypress);
     }
     if (window.thothRecorder.handlers.keydown) {
-        document.removeEventListener('keydown', window.thothRecorder.handlers.keydown);
+        document.removeEventListener('keydown', window.thothRecorder.handlers.keydown, true);
     }
     if (window.thothRecorder.handlers.scroll) {
         window.removeEventListener('scroll', window.thothRecorder.handlers.scroll, true);
@@ -624,40 +797,47 @@ function initialize() {
         pageshow: pageShowHandler
     };
 
-    // Add event listeners
+    // Event listeners — captured in every frame so iframe interactions are seen.
     document.addEventListener('click', clickHandler, true);
     document.addEventListener('mousedown', mousedownHandler, true);
     document.addEventListener('keypress', keypressHandler);
-    document.addEventListener('keydown', keydownHandler);
+    document.addEventListener('keydown', keydownHandler, true);
     window.addEventListener('scroll', scrollHandler, true);
     document.addEventListener('change', changeHandler, true);
-    document.addEventListener('visibilitychange', visibilityChangeHandler);
-    window.addEventListener('focus', focusHandler);
-    window.addEventListener('pageshow', pageShowHandler);
-    
+
     // Set up message listener (only if not already set up)
     if (!window.thothRecorder.messageListenerSet) {
         setupMessageListener();
         window.thothRecorder.messageListenerSet = true;
     }
-    
-    // Check session status immediately - this wakes up the background script
+
+    // Resolve this frame's offset within the top viewport (all frames).
+    thothSetupFrameOffset();
+
+    // Check session status immediately - this wakes up the background script.
+    // Sub-frames use it to learn isRecording; the tab-level gating lives in the
+    // background, so events from any frame are attributed to the recording tab.
     wakeUpAndCheckSession();
-    
-    // Set up periodic keep-alive check (every 30 seconds)
-    if (!window.thothRecorder.keepAliveSet) {
-        setInterval(() => {
-            // Only do keep-alive if we think we're recording
-            if (window.thothRecorder.isRecording && checkExtensionContext()) {
-                console.log('[Thoth] Keep-alive check...');
-                wakeUpAndCheckSession();
-            }
-        }, 30000);
-        window.thothRecorder.keepAliveSet = true;
+
+    // Session-lifecycle listeners and keep-alive are top-frame responsibilities.
+    if (THOTH_IS_TOP) {
+        document.addEventListener('visibilitychange', visibilityChangeHandler);
+        window.addEventListener('focus', focusHandler);
+        window.addEventListener('pageshow', pageShowHandler);
+
+        if (!window.thothRecorder.keepAliveSet) {
+            setInterval(() => {
+                if (window.thothRecorder.isRecording && checkExtensionContext()) {
+                    console.log('[Thoth] Keep-alive check...');
+                    wakeUpAndCheckSession();
+                }
+            }, 30000);
+            window.thothRecorder.keepAliveSet = true;
+        }
     }
-    
+
     window.thothRecorder.initialized = true;
-    console.log('[Thoth] Content script initialized');
+    console.log('[Thoth] Content script initialized (top frame: ' + THOTH_IS_TOP + ')');
 }
 
 // Always initialize when script runs

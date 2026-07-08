@@ -294,8 +294,8 @@ app.post('/recording/events/navigation', upload.single('view'), async (req: Requ
 app.get('/recording/session/generate', (req: Request, res: Response) => {
     const { guid, testName } = req.query;
     try {
-        const script = recordingService.generateScript(guid as string, testName as string | undefined);
-        res.status(200).json({ script });
+        const { script, bundlePath } = recordingService.generateProject(guid as string, testName as string | undefined);
+        res.status(200).json({ script, bundlePath });
     } catch (error) {
         console.error('Error generating script:', error);
         res.status(500).json({ error: 'Failed to generate script.' });

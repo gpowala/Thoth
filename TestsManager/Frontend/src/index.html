@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- Marks this as Thoth's own UI so the recorder content script never captures
+       events here (avoids recording the setup/connection clicks). -->
+  <meta name="thoth-recorder-app" content="true">
   <title>ThotTestManager</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">

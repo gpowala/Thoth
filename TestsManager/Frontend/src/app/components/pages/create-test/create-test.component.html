@@ -87,6 +87,12 @@
                 <mat-icon>{{ scriptCopied ? 'check' : 'content_copy' }}</mat-icon>
               </button>
             </div>
+            @if (bundlePath) {
+              <div class="script-panel-bundle">
+                Bundle written to <code>{{ bundlePath }}</code> — includes <code>test.py</code>,
+                <code>thoth_visual.py</code>, and <code>baselines/</code>.
+              </div>
+            }
             <pre class="script-panel-body">{{ generatedScript }}</pre>
           </div>
         }
