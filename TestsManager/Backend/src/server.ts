@@ -181,7 +181,8 @@ app.post('/recording/events/click', upload.single('clickview'), async (req: Requ
   try {
     // Optional additive target envelope (selectors + DOM/visual classification).
     const target = parseTargetMeta(req.body?.metadata);
-    recordingService.registerClickEvent(guid as string, xCoord, yCoord, req.file.buffer, target);
+    const clientTime = Number(req.query.clientTime);
+    recordingService.registerClickEvent(guid as string, xCoord, yCoord, req.file.buffer, target, clientTime);
     res.status(200).send('Image trimmed and saved successfully.');
   } catch (error) {
     console.error('Error processing image:', error);
@@ -207,7 +208,8 @@ app.post('/recording/events/area-select', upload.single('areaSelectView'), async
   }
 
   try {
-    recordingService.registerAreaSelectEvent(guid as string, topCoord, bottomCoord, leftCoord, rightCoord, req.file.buffer, devicePixelRatio);
+    const clientTime = Number(req.query.clientTime);
+    recordingService.registerAreaSelectEvent(guid as string, topCoord, bottomCoord, leftCoord, rightCoord, req.file.buffer, devicePixelRatio, clientTime);
     res.status(200).send('Area select event registered successfully.');
   } catch (error) {
     console.error('Error processing area-select image:', error);
@@ -217,8 +219,87 @@ app.post('/recording/events/area-select', upload.single('areaSelectView'), async
 
 app.get('/recording/events/keypress', async (req: Request, res: Response) => {
     const { guid, key } = req.query;
-    recordingService.registerKeypressEvent(guid as string, key as string);
+    const clientTime = Number(req.query.clientTime);
+    recordingService.registerKeypressEvent(guid as string, key as string, clientTime);
     res.status(200).send('Keypress event registered successfully.');
+});
+
+app.post('/recording/events/scroll', upload.single('view'), async (req: Request, res: Response) => {
+    const { guid } = req.query;
+    const x = Number(req.body?.x);
+    const y = Number(req.body?.y);
+
+    if (isNaN(x) || isNaN(y)) {
+        return res.status(400).send('Missing or invalid x/y.');
+    }
+    if (!req.file) {
+        return res.status(400).send('No image file uploaded.');
+    }
+
+    try {
+        const target = parseTargetMeta(req.body?.metadata);
+        const clientTime = Number(req.body?.clientTime);
+        recordingService.registerScrollEvent(guid as string, x, y, req.file.buffer, target, clientTime);
+        res.status(200).send('Scroll event registered successfully.');
+    } catch (error) {
+        console.error('Error processing scroll event:', error);
+        res.status(500).send('Error processing scroll event.');
+    }
+});
+
+app.post('/recording/events/input', upload.single('view'), async (req: Request, res: Response) => {
+    const { guid } = req.query;
+    const controlType = (req.body?.controlType as string) || 'other';
+    const value = (req.body?.value as string) ?? '';
+    const checked = req.body?.checked === 'true';
+    const selectedText = req.body?.selectedText as string | undefined;
+
+    if (!req.file) {
+        return res.status(400).send('No image file uploaded.');
+    }
+
+    try {
+        const target = parseTargetMeta(req.body?.metadata);
+        const clientTime = Number(req.body?.clientTime);
+        recordingService.registerInputEvent(guid as string, controlType as any, value, checked, req.file.buffer, target, selectedText, clientTime);
+        res.status(200).send('Input event registered successfully.');
+    } catch (error) {
+        console.error('Error processing input event:', error);
+        res.status(500).send('Error processing input event.');
+    }
+});
+
+app.post('/recording/events/navigation', upload.single('view'), async (req: Request, res: Response) => {
+    const { guid } = req.query;
+    const url = (req.body?.url as string) ?? '';
+    const navType = ((req.body?.navType as string) || 'load') as any;
+
+    if (!url) {
+        return res.status(400).send('Missing url.');
+    }
+    if (!req.file) {
+        return res.status(400).send('No image file uploaded.');
+    }
+
+    try {
+        const clientTime = Number(req.body?.clientTime);
+        recordingService.registerNavigationEvent(guid as string, url, navType, req.file.buffer, clientTime);
+        res.status(200).send('Navigation event registered successfully.');
+    } catch (error) {
+        console.error('Error processing navigation event:', error);
+        res.status(500).send('Error processing navigation event.');
+    }
+});
+
+app.get('/recording/session/generate', (req: Request, res: Response) => {
+    const { guid, testName } = req.query;
+    try {
+        const script = recordingService.generateScript(guid as string, testName as string | undefined);
+        res.status(200).json({ script });
+    } catch (error) {
+        console.error('Error generating script:', error);
+        res.status(500).json({ error: 'Failed to generate script.' });
+    }
 });
 
 const requireRepositoryExists = (repository: any) => {

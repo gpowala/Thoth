@@ -74,6 +74,15 @@ export class RecordingSessionService implements OnDestroy {
     );
   }
 
+  generateScript(guid: string, testName?: string): Observable<{ script: string }> {
+    return this.http.get<{ script: string }>(`${this.baseUrl}/recording/session/generate`, {
+      params: {
+        guid: encodeURIComponent(guid),
+        ...(testName ? { testName: encodeURIComponent(testName) } : {})
+      }
+    });
+  }
+
   getRecordingSessionUpdate(session: Session): Observable<SessionStatus> {
     return this.http.get<SessionStatus>(`${this.baseUrl}/recording/session/update`, {
       params: {

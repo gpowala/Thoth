@@ -184,6 +184,7 @@ const handleMessage = (message, sender, sendResponse) => {
             recordingTabId = tabs[0].id;
             isRecording = true;
             lastEventTime = Date.now();
+            const initialUrl = tabs[0].url;
             
             try {
                 const url = new URL(message.serverUrl);
@@ -211,7 +212,13 @@ const handleMessage = (message, sender, sendResponse) => {
                     
                     // Notify content script
                     notifyContentScript('session-started');
-                    
+
+                    // Record the starting URL as the test's opening navigation.
+                    if (initialUrl && !initialUrl.startsWith('chrome')) {
+                        lastNavigatedUrl = initialUrl;
+                        recordNavigation(initialUrl, 'initial');
+                    }
+
                     sendResponse({ success: true });
                 })
                 .catch((error) => {
@@ -237,16 +244,22 @@ const handleMessage = (message, sender, sendResponse) => {
         saveState(); // Update last event time in storage
         
         if (message.action === "tests-recorder-click-event") {
-            recordClickEvent(sender, message.window, message.position, message.scroll, message.metadata);
+            recordClickEvent(sender, message.window, message.position, message.scroll, message.metadata, message.clientTime);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-mousedown-event") {
-            recordMousedownEvent(sender, message.window, message.position, message.scroll, message.metadata);
+            recordMousedownEvent(sender, message.window, message.position, message.scroll, message.metadata, message.clientTime);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-area-select-event") {
-            recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right, message.dpr);
+            recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right, message.dpr, message.clientTime);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-keypress-event") {
-            recordKeypressEvent(message.key);
+            recordKeypressEvent(message.key, message.clientTime);
+            sendResponse({ success: true });
+        } else if (message.action === "tests-recorder-scroll-event") {
+            recordScrollEvent(sender, message.scroll, message.metadata, message.clientTime);
+            sendResponse({ success: true });
+        } else if (message.action === "tests-recorder-input-event") {
+            recordInputEvent(sender, message);
             sendResponse({ success: true });
         }
     }
@@ -322,10 +335,10 @@ const viewToBlob = (view) => {
 };
 
 // Record click event
-const recordClickEvent = (sender, windowSize, position, scroll, metadata) => {
+const recordClickEvent = (sender, windowSize, position, scroll, metadata, clientTime) => {
     const adjustedX = position.x + scroll.x;
     const adjustedY = position.y + scroll.y;
-    const url = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${adjustedX}&y=${adjustedY}`;
+    const url = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${adjustedX}&y=${adjustedY}&clientTime=${clientTime || Date.now()}`;
 
     chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (clickView) => {
         if (chrome.runtime.lastError) {
@@ -348,8 +361,8 @@ const recordClickEvent = (sender, windowSize, position, scroll, metadata) => {
 };
 
 // Record mousedown event
-const recordMousedownEvent = (sender, windowSize, position, scroll, metadata) => {
-    const url = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${position.x}&y=${position.y}`;
+const recordMousedownEvent = (sender, windowSize, position, scroll, metadata, clientTime) => {
+    const url = `${serverUrl}/recording/events/click?guid=${sessionId}&x=${position.x}&y=${position.y}&clientTime=${clientTime || Date.now()}`;
 
     chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (clickView) => {
         if (chrome.runtime.lastError) {
@@ -370,8 +383,8 @@ const recordMousedownEvent = (sender, windowSize, position, scroll, metadata) =>
 };
 
 // Record area select event
-const recordAreaSelectEvent = (sender, top, bottom, left, right, dpr) => {
-    const url = `${serverUrl}/recording/events/area-select?guid=${sessionId}&top=${top}&bottom=${bottom}&left=${left}&right=${right}&dpr=${dpr || 1}`;
+const recordAreaSelectEvent = (sender, top, bottom, left, right, dpr, clientTime) => {
+    const url = `${serverUrl}/recording/events/area-select?guid=${sessionId}&top=${top}&bottom=${bottom}&left=${left}&right=${right}&dpr=${dpr || 1}&clientTime=${clientTime || Date.now()}`;
     
     chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: "png" }, (areaSelectView) => {
         if (chrome.runtime.lastError) {
@@ -389,15 +402,115 @@ const recordAreaSelectEvent = (sender, top, bottom, left, right, dpr) => {
 };
 
 // Record keypress event
-const recordKeypressEvent = (key) => {
+const recordKeypressEvent = (key, clientTime) => {
     // Encode the key so control chars (\n), spaces and reserved chars (& = ?)
     // survive the query string; the backend decodes it once.
-    const url = `${serverUrl}/recording/events/keypress?guid=${sessionId}&key=${encodeURIComponent(key)}`;
+    const url = `${serverUrl}/recording/events/keypress?guid=${sessionId}&key=${encodeURIComponent(key)}&clientTime=${clientTime || Date.now()}`;
 
     fetch(url, { method: 'GET' })
         .then(() => console.log('[Background] Keypress event recorded'))
         .catch((error) => console.error('[Background] Keypress record error:', error));
 };
+
+// Capture the visible tab and POST it as multipart 'view' with extra text fields.
+// Shared by the Phase 1 events (scroll/input/navigation) that each keep one
+// full-page screenshot.
+const captureAndPost = (windowId, url, fields) => {
+    chrome.tabs.captureVisibleTab(windowId, { format: "png" }, (view) => {
+        if (chrome.runtime.lastError) {
+            console.error("[Background] Capture error:", chrome.runtime.lastError.message);
+            return;
+        }
+        const formData = new FormData();
+        formData.append('view', viewToBlob(view), 'view.png');
+        for (const key in (fields || {})) {
+            const value = fields[key];
+            if (value === undefined || value === null) continue;
+            formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+        }
+        fetch(url, { method: 'POST', body: formData })
+            .then(() => console.log('[Background] Event recorded:', url))
+            .catch((error) => console.error('[Background] Record error:', error));
+    });
+};
+
+// Record scroll event
+const recordScrollEvent = (sender, scroll, metadata, clientTime) => {
+    const url = `${serverUrl}/recording/events/scroll?guid=${sessionId}`;
+    captureAndPost(sender.tab.windowId, url, {
+        x: scroll.x,
+        y: scroll.y,
+        metadata: metadata,
+        clientTime: clientTime || Date.now()
+    });
+};
+
+// Record input/change event
+const recordInputEvent = (sender, message) => {
+    const url = `${serverUrl}/recording/events/input?guid=${sessionId}`;
+    captureAndPost(sender.tab.windowId, url, {
+        controlType: message.controlType,
+        value: message.value,
+        checked: message.checked,
+        selectedText: message.selectedText,
+        metadata: message.metadata,
+        clientTime: message.clientTime || Date.now()
+    });
+};
+
+// Record a navigation event (looks up the recording tab's window for capture).
+const recordNavigation = (url, navType) => {
+    if (!serverUrl || !sessionId || recordingTabId < 0) return;
+    const clientTime = Date.now();
+    chrome.tabs.get(recordingTabId, (tab) => {
+        if (chrome.runtime.lastError || !tab) return;
+        captureAndPost(tab.windowId, `${serverUrl}/recording/events/navigation?guid=${sessionId}`, {
+            url: url,
+            navType: navType,
+            clientTime: clientTime
+        });
+    });
+};
+
+// A navigation is recorded ONLY when the user explicitly demands a URL change —
+// address bar, bookmark, reload. Navigations that are a *consequence* of a user
+// action (clicking a link/button, submitting a form, redirects, SPA route
+// changes) are NOT recorded here: they are already captured as the click/input
+// step, and emitting a navigation for them would collapse the real operation.
+const EXPLICIT_NAV_TRANSITIONS = new Set([
+    'typed', 'auto_bookmark', 'generated', 'keyword', 'keyword_generated', 'reload', 'start_page'
+]);
+
+let lastNavigatedUrl = '';
+let pendingNav = null; // { url, transitionType } from the latest onCommitted
+
+if (chrome.webNavigation) {
+    // onCommitted carries the transitionType; remember it for the matching onCompleted.
+    chrome.webNavigation.onCommitted.addListener(async (details) => {
+        await ensureStateRestored();
+        if (details.frameId !== 0 || details.tabId !== recordingTabId || !isRecording) return;
+        pendingNav = { url: details.url, transitionType: details.transitionType };
+    });
+
+    // onCompleted fires once the page is painted (good for the screenshot). Only
+    // record it if the navigation was user-initiated per its transition type.
+    chrome.webNavigation.onCompleted.addListener(async (details) => {
+        await ensureStateRestored();
+        if (details.frameId !== 0 || details.tabId !== recordingTabId || !isRecording) return;
+
+        const transitionType = (pendingNav && pendingNav.url === details.url) ? pendingNav.transitionType : undefined;
+        pendingNav = null;
+
+        if (details.url === lastNavigatedUrl) return;
+        if (!EXPLICIT_NAV_TRANSITIONS.has(transitionType)) return; // consequence of a user action → skip
+
+        lastNavigatedUrl = details.url;
+        recordNavigation(details.url, 'load');
+    });
+
+    // NOTE: onHistoryStateUpdated (SPA route changes) is intentionally NOT handled —
+    // those are driven by clicks/JS and are captured as the originating click step.
+}
 
 // Initial state restore
 console.log('[Background] Service worker started');

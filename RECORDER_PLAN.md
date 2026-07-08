@@ -148,7 +148,7 @@ DOM fields sit **alongside** the coordinate/screenshot data already captured —
 |-------|----------|----------|
 | Scroll | final scroll x/y, container (window vs element) | debounce; one "scroll to (x,y)" after ~150 ms idle; 1 screenshot after settle |
 | Input / change | final field value on `change`/`blur` | robust vs. reconstructing from keystrokes; catches paste, autofill, `<select>` |
-| Navigation | URL changes: full loads + SPA routes (`pushState`/`popstate`/`hashchange`) | one event per settled URL |
+| Navigation | **User-initiated** URL changes only — address bar / bookmark / reload / initial page (`webNavigation` transition types `typed`/`auto_bookmark`/`generated`/`keyword`/`reload`/`start_page`). URL changes caused by a click/form-submit/redirect/SPA-route are NOT navigation events — they are the originating click/input step. | one event per user-initiated URL |
 | Select / dropdown | chosen option value/text | on `change` |
 | Checkbox / radio | final checked state | on `change` |
 
@@ -293,6 +293,7 @@ No recording-time data depends on this choice.
 | Screenshot timing | **Locked** | Per-event policy (§5); grouped events capture once at flush; no screenshots for mouse-move. |
 | Storage | **Locked** | Full PNG immutable source of truth; crops derived from full + geometry. |
 | Grouping location | **Locked** | Move to backend. |
+| Navigation semantics | **Locked** | Navigation events represent only user-initiated URL changes (address bar / bookmark / reload / initial page), filtered by `webNavigation` transition type. Consequential navigations (click/link/form-submit/redirect/SPA route) are NOT recorded — they are the originating click/input step. Derived/technical events must never collapse or replace real user operations. |
 | Text editing / Backspace | **Locked (modality-aware)** | DOM fields: rely on final value (`input`/`change`) — no keystroke reconstruction, Backspace not replayed. Visual/canvas fields: keystroke capture via `keydown` with grouped `[Backspace ×N]` (size = count). |
 | Visual matching engine | **Deferred to Phase 2** | OpenCV (leaning) vs. Playwright native; storage is forward-compatible with both. |
 | Codegen home | **Open** | Node backend (leaning) vs. separate Python service. |

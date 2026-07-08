@@ -242,6 +242,8 @@
 
 .step-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   background: var(--surface-1);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -446,23 +448,89 @@
   word-break: break-word;
 }
 
-/* Typed-text rendering for keyboard steps. */
-.keys-typed {
-  margin-top: 6px;
-  padding: 8px 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  font-size: 13px;
-  color: var(--text-1);
-  word-break: break-word;
-  white-space: pre-wrap;
-  min-height: 18px;
+.toolbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
+
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-1);
+  border-color: var(--border-strong);
+}
+
+/* Navigation URL — single line, truncated with ellipsis (full URL on hover). */
+.nav-url {
+  display: block;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Generated Playwright script panel. */
+.script-panel {
+  margin: 0 0 20px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.script-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.script-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.script-panel-body {
+  margin: 0;
+  padding: 14px;
+  max-height: 420px;
+  overflow: auto;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-1);
+  white-space: pre;
+}
+
 
 .step-content {
   padding: 14px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main content fills the card and spreads evenly; the timestamp anchors bottom. */
+.step-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.step-timestamp {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: right;
 }
 
 .step-description {

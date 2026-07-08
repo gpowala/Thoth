@@ -66,11 +66,30 @@
               {{ session.status.isActive ? 'Recording active' : 'Session inactive' }}
             </div>
           </div>
-          <button class="btn btn-primary" (click)="stopSession()" [disabled]="!session.status.isActive">
-            <mat-icon>stop</mat-icon>
-            Stop session
-          </button>
+          <div class="toolbar-actions">
+            <button class="btn btn-secondary" (click)="generateScript()" [disabled]="processedEvents.length === 0">
+              <mat-icon>code</mat-icon>
+              Generate Playwright test
+            </button>
+            <button class="btn btn-primary" (click)="stopSession()" [disabled]="!session.status.isActive">
+              <mat-icon>stop</mat-icon>
+              Stop session
+            </button>
+          </div>
         </div>
+
+        @if (generatedScript) {
+          <div class="script-panel">
+            <div class="script-panel-header">
+              <span class="script-panel-title">Generated Playwright test (Python)</span>
+              <button class="icon-btn" [class.copied]="scriptCopied" (click)="copyScript()"
+                [title]="scriptCopied ? 'Copied!' : 'Copy script'">
+                <mat-icon>{{ scriptCopied ? 'check' : 'content_copy' }}</mat-icon>
+              </button>
+            </div>
+            <pre class="script-panel-body">{{ generatedScript }}</pre>
+          </div>
+        }
 
         <div class="filter-bar">
           <button class="filter-button active">All steps</button>
@@ -108,44 +127,81 @@
                 <span class="step-status status-passed"></span>
               </div>
               <div class="step-content">
-                @switch (event.type) {
-                  @case ('click') {
-                    <p class="step-description">{{ event.timestamp | date:'medium' }}</p>
-                    <p class="step-description">Coordinates: ({{ $any(event).x }}, {{ $any(event).y }})</p>
-                    <div class="screenshots-grid">
-                      <div class="screenshot">
-                        <img [src]="'data:image/png;base64,' + $any(event).fullClickViewBase64" alt="Full view">
-                        <div class="screenshot-label label-full">Full</div>
+                <div class="step-body">
+                  @switch (event.type) {
+                    @case ('click') {
+                      <p class="step-description">Coordinates: ({{ $any(event).x }}, {{ $any(event).y }})</p>
+                      <div class="screenshots-grid">
+                        <div class="screenshot">
+                          <img [src]="'data:image/png;base64,' + $any(event).fullClickViewBase64" alt="Full view">
+                          <div class="screenshot-label label-full">Full</div>
+                        </div>
+                        <div class="screenshot">
+                          <img [src]="'data:image/png;base64,' + $any(event).maxTrimmedClickViewBase64" alt="Cropped view">
+                          <div class="screenshot-label label-medium">Cropped</div>
+                        </div>
+                        <div class="screenshot">
+                          <img [src]="'data:image/png;base64,' + $any(event).minTrimmedClickViewBase64" alt="Focused view">
+                          <div class="screenshot-label label-focused">Focused</div>
+                        </div>
                       </div>
-                      <div class="screenshot">
-                        <img [src]="'data:image/png;base64,' + $any(event).maxTrimmedClickViewBase64" alt="Cropped view">
-                        <div class="screenshot-label label-medium">Cropped</div>
+                    }
+                    @case ('keypress') {
+                      <p class="step-description">Key: {{ $any(event).keys }}</p>
+                    }
+                    @case ('area-select') {
+                      <div class="screenshots-grid">
+                        <div class="screenshot">
+                          <img [src]="'data:image/png;base64,' + $any(event).fullViewBase64" alt="Full view">
+                          <div class="screenshot-label label-full">Full</div>
+                        </div>
+                        <div class="screenshot">
+                          <img [src]="'data:image/png;base64,' + $any(event).areaSelectViewBase64" alt="Selected region">
+                          <div class="screenshot-label label-medium">Region</div>
+                        </div>
                       </div>
-                      <div class="screenshot">
-                        <img [src]="'data:image/png;base64,' + $any(event).minTrimmedClickViewBase64" alt="Focused view">
-                        <div class="screenshot-label label-focused">Focused</div>
-                      </div>
-                    </div>
+                    }
+                    @case ('scroll') {
+                      <p class="step-description">Scrolled to ({{ $any(event).x }}, {{ $any(event).y }})</p>
+                      @if ($any(event).fullViewBase64) {
+                        <div class="screenshots-grid">
+                          <div class="screenshot">
+                            <img [src]="'data:image/png;base64,' + $any(event).fullViewBase64" alt="Full view">
+                            <div class="screenshot-label label-full">Full</div>
+                          </div>
+                        </div>
+                      }
+                    }
+                    @case ('input') {
+                      @switch ($any(event).controlType) {
+                        @case ('checkbox') { <p class="step-description">Checked: {{ $any(event).checked }}</p> }
+                        @case ('radio') { <p class="step-description">Selected: {{ $any(event).checked }}</p> }
+                        @case ('select') { <p class="step-description">Selected: {{ $any(event).selectedText || $any(event).value }}</p> }
+                        @default { <p class="step-description">Text: {{ $any(event).value }}</p> }
+                      }
+                      @if ($any(event).fullViewBase64) {
+                        <div class="screenshots-grid">
+                          <div class="screenshot">
+                            <img [src]="'data:image/png;base64,' + $any(event).fullViewBase64" alt="Full view">
+                            <div class="screenshot-label label-full">Full</div>
+                          </div>
+                        </div>
+                      }
+                    }
+                    @case ('navigation') {
+                      <p class="step-description nav-url" [title]="$any(event).url">{{ $any(event).url }}</p>
+                      @if ($any(event).fullViewBase64) {
+                        <div class="screenshots-grid">
+                          <div class="screenshot">
+                            <img [src]="'data:image/png;base64,' + $any(event).fullViewBase64" alt="Full view">
+                            <div class="screenshot-label label-full">Full</div>
+                          </div>
+                        </div>
+                      }
+                    }
                   }
-                  @case ('keypress') {
-                    <p class="step-description">{{ event.timestamp | date:'medium' }}</p>
-                    <p class="step-description">Typed text</p>
-                    <div class="keys-typed">{{ $any(event).keys }}</div>
-                  }
-                  @case ('area-select') {
-                    <p class="step-description">{{ event.timestamp | date:'medium' }}</p>
-                    <div class="screenshots-grid">
-                      <div class="screenshot">
-                        <img [src]="'data:image/png;base64,' + $any(event).fullViewBase64" alt="Full view">
-                        <div class="screenshot-label label-full">Full</div>
-                      </div>
-                      <div class="screenshot">
-                        <img [src]="'data:image/png;base64,' + $any(event).areaSelectViewBase64" alt="Selected region">
-                        <div class="screenshot-label label-medium">Region</div>
-                      </div>
-                    </div>
-                  }
-                }
+                </div>
+                <p class="step-timestamp">{{ event.timestamp | date:'medium' }}</p>
               </div>
             </div>
           }

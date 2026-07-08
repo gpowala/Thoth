@@ -7,7 +7,11 @@ window.thothRecorder = window.thothRecorder || {
     isRecording: false,
     extensionContextValid: true,
     handlers: {},
-    retryCount: 0
+    retryCount: 0,
+    // Time of the last content keystroke into an editable field. Used to stamp the
+    // input/change event just before the key that commits it (e.g. Enter), so the
+    // "Text: ..." step orders before the "Keypress: Enter" step.
+    lastEditableKeyTime: 0
 };
 
 const CLICK_PRIORITY_DELAY = 350;
@@ -272,7 +276,8 @@ const clickHandler = function(event) {
             id: event.target.id,
             className: thothClassName(event.target)
         },
-        metadata: thothBuildTargetMeta(event.target)
+        metadata: thothBuildTargetMeta(event.target),
+        clientTime: Date.now()
     }, 'Click event captured');
 };
 
@@ -298,7 +303,8 @@ const mousedownHandler = function(event) {
             id: event.target.id,
             className: thothClassName(event.target)
         },
-        metadata: thothBuildTargetMeta(event.target)
+        metadata: thothBuildTargetMeta(event.target),
+        clientTime: Date.now()
     };
 
     if (mousedownProcessingTimer) {
@@ -312,6 +318,16 @@ const mousedownHandler = function(event) {
         }
         mousedownProcessingTimer = null;
     }, CLICK_PRIORITY_DELAY);
+};
+
+// Is this a value-bearing DOM field whose final value the `change` event will
+// capture? For these we suppress printable keystrokes (the input event is
+// authoritative) but still record discrete action keys like [Enter]/[Tab].
+const thothIsEditableDomField = (el) => {
+    if (!el || !el.tagName) return false;
+    const tag = el.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA') return false;
+    return thothClassifyTarget(el) !== 'visual';
 };
 
 // Keypress event handler
@@ -331,11 +347,105 @@ const keypressHandler = function(event) {
         }
     }
 
+    // For DOM text fields the `change` event records the authoritative final
+    // value, so drop printable keystrokes (incl. the translated newline) to avoid
+    // double-recording. Action keys (multi-char names like Enter/Tab) still fire.
+    const isActionKey = key.length > 1;
+    if (!isActionKey && thothIsEditableDomField(event.target)) {
+        // Remember when the field was last edited so the input/change event can be
+        // ordered just before whatever key eventually commits it.
+        window.thothRecorder.lastEditableKeyTime = Date.now();
+        return;
+    }
+
     safeSendMessage({
         action: "tests-recorder-keypress-event",
         key: key,
-        timestamp: performance.now()
+        clientTime: Date.now()
     }, 'Keypress event captured');
+};
+
+// Scroll handler — debounced so a burst collapses into one "settled" position.
+// Reads the offset from whatever actually scrolled: the window for document
+// scrolls, or the specific element for inner scroll containers (where
+// window.scrollX/Y stays 0). Capture-phase listener so inner scrolls reach us.
+let thothScrollTimer = null;
+const scrollHandler = function(event) {
+    if (!window.thothRecorder.isRecording) return;
+    const target = event.target;
+    if (thothScrollTimer) clearTimeout(thothScrollTimer);
+    thothScrollTimer = setTimeout(() => {
+        thothScrollTimer = null;
+        const dpr = window.devicePixelRatio || 1;
+
+        const isDocumentScroll = !target || target === document ||
+            target === document.documentElement || target === document.body;
+        const scrollX = isDocumentScroll ? window.scrollX : (target.scrollLeft || 0);
+        const scrollY = isDocumentScroll ? window.scrollY : (target.scrollTop || 0);
+        const containerEl = (target && target.nodeType === 1) ? target : (document.scrollingElement || document.body);
+
+        safeSendMessage({
+            action: "tests-recorder-scroll-event",
+            scroll: {
+                x: parseInt(scrollX * dpr),
+                y: parseInt(scrollY * dpr)
+            },
+            metadata: thothBuildTargetMeta(containerEl),
+            clientTime: Date.now()
+        }, 'Scroll event captured');
+    }, 250);
+};
+
+// Change handler — the committed value of a form control (authoritative for text).
+const changeHandler = function(event) {
+    if (!window.thothRecorder.isRecording) return;
+    const t = event.target;
+    if (!t || !t.tagName) return;
+
+    let controlType = 'other';
+    let value = '';
+    let checked = false;
+    let selectedText = '';
+
+    if (t.tagName === 'INPUT') {
+        const type = (t.getAttribute('type') || 'text').toLowerCase();
+        if (type === 'checkbox' || type === 'radio') {
+            controlType = type;
+            checked = !!t.checked;
+            value = t.value || '';
+        } else {
+            controlType = 'text';
+            value = t.value || '';
+        }
+    } else if (t.tagName === 'TEXTAREA') {
+        controlType = 'text';
+        value = t.value || '';
+    } else if (t.tagName === 'SELECT') {
+        controlType = 'select';
+        value = t.value || '';
+        const opt = t.options && t.options[t.selectedIndex];
+        selectedText = opt ? opt.text : '';
+    } else {
+        return;
+    }
+
+    // For text fields, order this event at the last keystroke (i.e. just before
+    // the key that committed it, such as Enter). Other controls use now.
+    const isTextField = controlType === 'text';
+    const clientTime = (isTextField && window.thothRecorder.lastEditableKeyTime)
+        ? window.thothRecorder.lastEditableKeyTime
+        : Date.now();
+    window.thothRecorder.lastEditableKeyTime = 0;
+
+    safeSendMessage({
+        action: "tests-recorder-input-event",
+        controlType: controlType,
+        value: value,
+        checked: checked,
+        selectedText: selectedText,
+        metadata: thothBuildTargetMeta(t),
+        clientTime: clientTime
+    }, 'Input event captured');
 };
 
 // Keydown handler for hotkeys
@@ -422,7 +532,8 @@ function createOverlay() {
                 },
                 // Overlay rect is CSS px; backend needs dpr to map it onto the
                 // device-pixel screenshot when cropping the selected region.
-                dpr: window.devicePixelRatio || 1
+                dpr: window.devicePixelRatio || 1,
+                clientTime: Date.now()
             }, 'Area select event captured');
         }
     });
@@ -484,6 +595,12 @@ function initialize() {
     if (window.thothRecorder.handlers.keydown) {
         document.removeEventListener('keydown', window.thothRecorder.handlers.keydown);
     }
+    if (window.thothRecorder.handlers.scroll) {
+        window.removeEventListener('scroll', window.thothRecorder.handlers.scroll, true);
+    }
+    if (window.thothRecorder.handlers.change) {
+        document.removeEventListener('change', window.thothRecorder.handlers.change, true);
+    }
     if (window.thothRecorder.handlers.visibilitychange) {
         document.removeEventListener('visibilitychange', window.thothRecorder.handlers.visibilitychange);
     }
@@ -500,16 +617,20 @@ function initialize() {
         mousedown: mousedownHandler,
         keypress: keypressHandler,
         keydown: keydownHandler,
+        scroll: scrollHandler,
+        change: changeHandler,
         visibilitychange: visibilityChangeHandler,
         focus: focusHandler,
         pageshow: pageShowHandler
     };
-    
+
     // Add event listeners
     document.addEventListener('click', clickHandler, true);
     document.addEventListener('mousedown', mousedownHandler, true);
     document.addEventListener('keypress', keypressHandler);
     document.addEventListener('keydown', keydownHandler);
+    window.addEventListener('scroll', scrollHandler, true);
+    document.addEventListener('change', changeHandler, true);
     document.addEventListener('visibilitychange', visibilityChangeHandler);
     window.addEventListener('focus', focusHandler);
     window.addEventListener('pageshow', pageShowHandler);

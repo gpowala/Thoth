@@ -4,7 +4,11 @@ import { HttpContext } from '../utils/http-context';
 import { ClickEvent } from './events/click-event';
 import { KeypressEvent } from './events/keypress-event';
 import { AreaSelectEvent } from './events/area-select-event';
+import { ScrollEvent } from './events/scroll-event';
+import { InputEvent, InputControlType } from './events/input-event';
+import { NavigationEvent, NavigationType } from './events/navigation-event';
 import { TargetMeta } from './events/target-meta';
+import { generatePlaywrightScript } from './playwright-codegen';
 
 export class RecordingService {
     private sessions: Map<string, RecordingSession>;
@@ -62,16 +66,35 @@ export class RecordingService {
         return this.sessions.get(guid)?.isActive() || false;
     }
 
-    public registerClickEvent(guid: string, x: number, y: number, clickViewStream: Buffer, target?: TargetMeta): void {
-        this.sessions.get(guid)?.registerClickEvent(x, y, clickViewStream, target);
+    public registerClickEvent(guid: string, x: number, y: number, clickViewStream: Buffer, target?: TargetMeta, clientTime?: number): void {
+        this.sessions.get(guid)?.registerClickEvent(x, y, clickViewStream, target, clientTime);
     }
 
-    public registerKeypressEvent(guid: string, key: string): void {
-        this.sessions.get(guid)?.registerKeypressEvent(key);
+    public registerKeypressEvent(guid: string, key: string, clientTime?: number): void {
+        this.sessions.get(guid)?.registerKeypressEvent(key, clientTime);
     }
 
-    public registerAreaSelectEvent(guid: string, top: number, bottom: number, left: number, right: number, areaSelectViewStream: Buffer, dpr: number = 1): void {
-        this.sessions.get(guid)?.registerAreaSelectEvent(top, bottom, left, right, areaSelectViewStream, dpr);
+    public registerAreaSelectEvent(guid: string, top: number, bottom: number, left: number, right: number, areaSelectViewStream: Buffer, dpr: number = 1, clientTime?: number): void {
+        this.sessions.get(guid)?.registerAreaSelectEvent(top, bottom, left, right, areaSelectViewStream, dpr, clientTime);
+    }
+
+    public registerScrollEvent(guid: string, x: number, y: number, viewStream: Buffer, target?: TargetMeta, clientTime?: number): void {
+        this.sessions.get(guid)?.registerScrollEvent(x, y, viewStream, target, clientTime);
+    }
+
+    public registerInputEvent(guid: string, controlType: InputControlType, value: string, checked: boolean, viewStream: Buffer, target?: TargetMeta, selectedText?: string, clientTime?: number): void {
+        this.sessions.get(guid)?.registerInputEvent(controlType, value, checked, viewStream, target, selectedText, clientTime);
+    }
+
+    public registerNavigationEvent(guid: string, url: string, navType: NavigationType, viewStream: Buffer, clientTime?: number): void {
+        this.sessions.get(guid)?.registerNavigationEvent(url, navType, viewStream, clientTime);
+    }
+
+    public generateScript(guid: string, testName?: string): string {
+        // getRecordedEvents is annotated IEvent[] but yields serialized {type,data}
+        // objects, which is exactly what the generator consumes.
+        const events = this.getRecordedEvents(guid) as any;
+        return generatePlaywrightScript(events, testName);
     }
 
     public getRecordedEvents(guid: string): IEvent[] {
@@ -120,6 +143,48 @@ export class RecordingService {
                         targetKind: event.targetKind,
                         areaSelectViewFilepath: event.areaSelectViewFilepath,
                         areaSelectViewBase64: event.areaSelectViewBase64,
+                        fullViewFilepath: event.fullViewFilepath,
+                        fullViewBase64: event.fullViewBase64
+                    })
+                };
+            } else if (event instanceof ScrollEvent) {
+                return {
+                    id: event.id,
+                    timestamp: event.timestamp,
+                    type: 'scroll',
+                    data: JSON.stringify({
+                        x: event.x,
+                        y: event.y,
+                        targetKind: event.target?.targetKind,
+                        fullViewFilepath: event.fullViewFilepath,
+                        fullViewBase64: event.fullViewBase64
+                    })
+                };
+            } else if (event instanceof InputEvent) {
+                return {
+                    id: event.id,
+                    timestamp: event.timestamp,
+                    type: 'input',
+                    data: JSON.stringify({
+                        controlType: event.controlType,
+                        value: event.value,
+                        checked: event.checked,
+                        selectedText: event.selectedText,
+                        targetKind: event.target?.targetKind,
+                        selectors: event.target?.selectors,
+                        tag: event.target?.tag,
+                        fullViewFilepath: event.fullViewFilepath,
+                        fullViewBase64: event.fullViewBase64
+                    })
+                };
+            } else if (event instanceof NavigationEvent) {
+                return {
+                    id: event.id,
+                    timestamp: event.timestamp,
+                    type: 'navigation',
+                    data: JSON.stringify({
+                        url: event.url,
+                        navType: event.navType,
                         fullViewFilepath: event.fullViewFilepath,
                         fullViewBase64: event.fullViewBase64
                     })

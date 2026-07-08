@@ -13,6 +13,9 @@ import { Session } from '../../../models/session';
 import { ClickEvent } from '../../../models/events/click-event';
 import { KeypressEvent } from '../../../models/events/keypress-event';
 import { AreaSelectEvent } from '../../../models/events/area-select-event';
+import { ScrollEvent } from '../../../models/events/scroll-event';
+import { InputEvent } from '../../../models/events/input-event';
+import { NavigationEvent } from '../../../models/events/navigation-event';
 import { IEvent } from '../../../models/events/event-interface';
 import { RecordingSessionService } from '../../../services/recording-session-service';
 
@@ -142,9 +145,21 @@ export class CreateTestComponent implements OnInit, AfterViewInit, OnDestroy {
   eventTitle(event: any): string {
     switch (event.type) {
       case 'click': return 'Click';
-      case 'keypress': return 'Keyboard input';
+      case 'keypress': return 'Keypress';
       case 'area-select': return 'Visual assertion';
+      case 'scroll': return 'Scroll';
+      case 'input': return this.inputTitle(event);
+      case 'navigation': return event.navType === 'initial' ? 'Open page' : 'Navigation';
       default: return event.type;
+    }
+  }
+
+  private inputTitle(event: any): string {
+    switch (event.controlType) {
+      case 'select': return 'Select option';
+      case 'checkbox': return 'Checkbox';
+      case 'radio': return 'Radio';
+      default: return 'Text input';
     }
   }
 
@@ -178,8 +193,57 @@ export class CreateTestComponent implements OnInit, AfterViewInit, OnDestroy {
           targetKind: event.targetKind ?? null,
           rect: { top: event.top, bottom: event.bottom, left: event.left, right: event.right }
         };
+      case 'scroll':
+        return { ...base, targetKind: event.targetKind ?? null, scroll: { x: event.x, y: event.y } };
+      case 'input':
+        return {
+          ...base,
+          controlType: event.controlType,
+          value: event.value,
+          checked: event.checked,
+          selectedText: event.selectedText ?? null,
+          targetKind: event.targetKind ?? null,
+          tag: event.tag ?? null,
+          selectors: event.selectors ?? null
+        };
+      case 'navigation':
+        return { ...base, url: event.url, navType: event.navType };
       default:
         return base;
+    }
+  }
+
+  /** Generate the Playwright (Python) test from the recorded events. */
+  generatedScript: string | null = null;
+  scriptCopied = false;
+
+  generateScript(): void {
+    if (!this.session.guid) {
+      return;
+    }
+    this.recordingSessionService.generateScript(this.session.guid, this.session.name).subscribe({
+      next: (result) => {
+        this.generatedScript = result.script;
+        this.cdr.detectChanges();
+      },
+      error: (error) => console.error('Error generating script:', error)
+    });
+  }
+
+  async copyScript(): Promise<void> {
+    if (!this.generatedScript) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(this.generatedScript);
+      this.scriptCopied = true;
+      setTimeout(() => {
+        this.scriptCopied = false;
+        this.cdr.detectChanges();
+      }, 2000);
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Error copying script:', error);
     }
   }
 
@@ -380,12 +444,19 @@ export class CreateTestComponent implements OnInit, AfterViewInit, OnDestroy {
           return new KeypressEvent(event.id, event.timestamp, data.keys);
         case 'area-select':
           return new AreaSelectEvent(event.id, event.timestamp, data.top, data.bottom, data.left, data.right, data.areaSelectViewFilepath, data.areaSelectViewBase64, data.fullViewFilepath, data.fullViewBase64, data.targetKind);
+        case 'scroll':
+          return new ScrollEvent(event.id, event.timestamp, data.x, data.y, data.targetKind, data.fullViewBase64);
+        case 'input':
+          return new InputEvent(event.id, event.timestamp, data.controlType, data.value, data.checked, data.selectedText, data.targetKind, data.selectors, data.tag, data.fullViewBase64);
+        case 'navigation':
+          return new NavigationEvent(event.id, event.timestamp, data.url, data.navType, data.fullViewBase64);
         default:
           throw new Error(`Unknown event type: ${event.type}`);
       }
     });
 
-    mappedEvents.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+    // Order by client capture time (timestamps are ISO strings from the backend).
+    mappedEvents.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
     this.processedEvents = mappedEvents;
   }
