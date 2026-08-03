@@ -5,7 +5,7 @@ import { ClickEvent } from './events/click-event';
 import { KeypressEvent } from './events/keypress-event';
 import { AreaSelectEvent } from './events/area-select-event';
 import { ScrollEvent } from './events/scroll-event';
-import { InputEvent, InputControlType } from './events/input-event';
+import { InputEvent, InputControlType, KeyStroke } from './events/input-event';
 import { NavigationEvent, NavigationType } from './events/navigation-event';
 import { TargetMeta } from './events/target-meta';
 import { generatePlaywrightProject } from './playwright-codegen';
@@ -84,8 +84,8 @@ export class RecordingService {
         this.sessions.get(guid)?.registerScrollEvent(x, y, viewStream, target, clientTime);
     }
 
-    public registerInputEvent(guid: string, controlType: InputControlType, value: string, checked: boolean, viewStream: Buffer, target?: TargetMeta, selectedText?: string, clientTime?: number): void {
-        this.sessions.get(guid)?.registerInputEvent(controlType, value, checked, viewStream, target, selectedText, clientTime);
+    public registerInputEvent(guid: string, controlType: InputControlType, value: string, checked: boolean, viewStream: Buffer, target?: TargetMeta, selectedText?: string, clientTime?: number, keys?: KeyStroke[]): void {
+        this.sessions.get(guid)?.registerInputEvent(controlType, value, checked, viewStream, target, selectedText, clientTime, keys);
     }
 
     public registerNavigationEvent(guid: string, url: string, navType: NavigationType, viewStream: Buffer, clientTime?: number): void {

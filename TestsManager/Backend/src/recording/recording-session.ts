@@ -9,7 +9,7 @@ import { trimClickEventView, extractRegion } from '../utils/image-helpers';
 import { KeypressEvent } from './events/keypress-event';
 import { AreaSelectEvent } from './events/area-select-event';
 import { ScrollEvent } from './events/scroll-event';
-import { InputEvent, InputControlType } from './events/input-event';
+import { InputEvent, InputControlType, KeyStroke } from './events/input-event';
 import { NavigationEvent, NavigationType } from './events/navigation-event';
 import { TargetMeta } from './events/target-meta';
 
@@ -165,11 +165,11 @@ export class RecordingSession extends EventEmitter {
         }
     }
 
-    public async registerInputEvent(controlType: InputControlType, value: string, checked: boolean, viewStream: Buffer, target?: TargetMeta, selectedText?: string, clientTime?: number): Promise<void> {
+    public async registerInputEvent(controlType: InputControlType, value: string, checked: boolean, viewStream: Buffer, target?: TargetMeta, selectedText?: string, clientTime?: number, keys?: KeyStroke[]): Promise<void> {
         this.flushPendingKeypress();
         try {
             const view = await this.saveFullView('input', viewStream);
-            this.recordedEvents.push(new InputEvent(this.tsOf(clientTime), controlType, value, checked, view.filepath, view.base64, target, selectedText));
+            this.recordedEvents.push(new InputEvent(this.tsOf(clientTime), controlType, value, checked, view.filepath, view.base64, target, selectedText, keys));
         } catch (error) {
             console.error('Error in registerInputEvent:', error);
             throw error;

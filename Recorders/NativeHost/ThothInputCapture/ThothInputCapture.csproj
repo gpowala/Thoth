@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WinExe (not Exe) so no console window flashes when the browser launches
+         us; stdio still works because the browser redirects our handles. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>ThothInputCapture</AssemblyName>
+    <RootNamespace>ThothInputCapture</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+</Project>

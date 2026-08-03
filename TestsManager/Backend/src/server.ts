@@ -261,7 +261,10 @@ app.post('/recording/events/input', upload.single('view'), async (req: Request, 
     try {
         const target = parseTargetMeta(req.body?.metadata);
         const clientTime = Number(req.body?.clientTime);
-        recordingService.registerInputEvent(guid as string, controlType as any, value, checked, req.file.buffer, target, selectedText, clientTime);
+        // Supplementary gathered keystroke sequence (JSON); tolerate malformed input.
+        let keys;
+        try { keys = req.body?.keys ? JSON.parse(req.body.keys) : undefined; } catch { keys = undefined; }
+        recordingService.registerInputEvent(guid as string, controlType as any, value, checked, req.file.buffer, target, selectedText, clientTime, keys);
         res.status(200).send('Input event registered successfully.');
     } catch (error) {
         console.error('Error processing input event:', error);

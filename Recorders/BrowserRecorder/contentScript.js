@@ -15,7 +15,13 @@ window.thothRecorder = window.thothRecorder || {
     // This frame's cumulative offset within the TOP viewport (CSS px). Resolved via
     // a postMessage handshake with ancestor frames so clicks inside (even
     // cross-origin) iframes translate to top-viewport coordinates.
-    frameOffset: { x: 0, y: 0 }
+    frameOffset: { x: 0, y: 0 },
+    // Raw keystroke sequence typed into the current editable DOM field, gathered
+    // alongside the authoritative committed value and attached to the input event
+    // (not used for replay today; retained for future auto-fill/analysis). Tied to
+    // the field element so switching fields starts a fresh sequence.
+    gatheredKeys: [],
+    gatheredKeysEl: null
 };
 
 // The content script runs in every frame (manifest all_frames). Session
@@ -77,6 +83,11 @@ const wakeUpAndCheckSession = async () => {
                 if (response) {
                     window.thothRecorder.isRecording = response.isRecording;
                     console.log('[Thoth] Session status:', window.thothRecorder.isRecording ? 'RECORDING ACTIVE' : 'NOT RECORDING');
+                    if (window.thothRecorder.isRecording) {
+                        thothShowKeyboardTrigger();
+                    } else {
+                        thothHideKeyboardTrigger();
+                    }
                     resolve(true);
                 } else {
                     console.log('[Thoth] No response from background');
@@ -288,6 +299,10 @@ const thothPointerCoords = (event) => {
 // frames, hence the (0,0) ghost click).
 const thothIsFrameElement = (el) => !!el && (el.tagName === 'IFRAME' || el.tagName === 'FRAME');
 
+// Clicks on the recorder's own UI (keyboard trigger button / input overlay) must
+// not be recorded as steps.
+const thothIsOwnUi = (el) => !!el && typeof el.closest === 'function' && !!el.closest('#thoth-key-overlay, #thoth-key-trigger');
+
 // Click event handler
 const clickHandler = function(event) {
     if (mousedownProcessingTimer) {
@@ -297,6 +312,7 @@ const clickHandler = function(event) {
     }
 
     if (thothIsFrameElement(event.target)) return;
+    if (thothIsOwnUi(event.target)) return;
 
     const dpr = window.devicePixelRatio || 1;
     const coords = thothPointerCoords(event);
@@ -322,6 +338,7 @@ const clickHandler = function(event) {
 // Mousedown event handler (fallback)
 const mousedownHandler = function(event) {
     if (thothIsFrameElement(event.target)) return;
+    if (thothIsOwnUi(event.target)) return;
 
     const dpr = window.devicePixelRatio || 1;
     const coords = thothPointerCoords(event);
@@ -363,28 +380,6 @@ const thothIsEditableDomField = (el) => {
     const tag = el.tagName;
     if (tag !== 'INPUT' && tag !== 'TEXTAREA') return false;
     return thothClassifyTarget(el) !== 'visual';
-};
-
-// Keypress handler — printable characters only. Named keys (Enter, Tab,
-// Backspace, arrows, ...) don't reliably fire keypress and are handled in
-// keydown instead.
-const keypressHandler = function(event) {
-    const key = event.key;
-    if (!key || key.length !== 1) return;
-
-    // For DOM text fields the `change` event records the authoritative final
-    // value, so drop printable keystrokes to avoid double-recording. Remember the
-    // edit time so the input/change event orders before whatever key commits it.
-    if (thothIsEditableDomField(event.target)) {
-        window.thothRecorder.lastEditableKeyTime = Date.now();
-        return;
-    }
-
-    safeSendMessage({
-        action: "tests-recorder-keypress-event",
-        key: key,
-        clientTime: Date.now()
-    }, 'Keypress event captured');
 };
 
 // Scroll handler — debounced so a burst collapses into one "settled" position.
@@ -461,6 +456,10 @@ const changeHandler = function(event) {
         : Date.now();
     window.thothRecorder.lastEditableKeyTime = 0;
 
+    // Supplementary raw keystrokes gathered while typing this text field (empty for
+    // non-text controls, paste-only entries, or autofill).
+    const gatheredKeys = isTextField ? thothTakeGatheredKeys(t) : [];
+
     safeSendMessage({
         action: "tests-recorder-input-event",
         controlType: controlType,
@@ -468,8 +467,37 @@ const changeHandler = function(event) {
         checked: checked,
         selectedText: selectedText,
         metadata: thothBuildTargetMeta(t),
+        keys: gatheredKeys,
         clientTime: clientTime
     }, 'Input event captured');
+};
+
+// Cap on gathered keystrokes per field (guards against unbounded growth if a
+// field is typed into for a very long time without ever committing).
+const THOTH_MAX_GATHERED_KEYS = 2000;
+
+// Gather one value-affecting keystroke typed into an editable DOM field. Tied to
+// the field element: if focus moved to a different field (even without a `change`
+// having fired), the sequence resets so keys never bleed across fields.
+const thothGatherKey = (key, el) => {
+    const r = window.thothRecorder;
+    if (r.gatheredKeysEl !== el) {
+        r.gatheredKeys = [];
+        r.gatheredKeysEl = el;
+    }
+    if (r.gatheredKeys.length < THOTH_MAX_GATHERED_KEYS) {
+        r.gatheredKeys.push({ key: key, t: Date.now() });
+    }
+};
+
+// Detach the gathered sequence for a committed field and reset the buffer. Returns
+// the keys only when they belong to the element being committed.
+const thothTakeGatheredKeys = (el) => {
+    const r = window.thothRecorder;
+    const keys = (r.gatheredKeysEl === el) ? r.gatheredKeys : [];
+    r.gatheredKeys = [];
+    r.gatheredKeysEl = null;
+    return keys;
 };
 
 // Bare modifier presses we never record as their own step.
@@ -480,8 +508,14 @@ const THOTH_MODIFIER_KEYS = new Set([
 
 // Keydown handler — the area-select hotkey plus all named (non-printable) keys.
 const keydownHandler = function(event) {
-    // Hotkey: open the area-select overlay (top frame only — it spans the tab).
+    // Hotkeys (top frame only): Alt+Shift+W = keyboard-input overlay (type text into
+    // an opaque iframe like Thinfinity); Alt+Shift+C = area-select overlay.
     if (THOTH_IS_TOP && event.altKey && event.shiftKey && event.code === "KeyW") {
+        createKeyboardOverlay();
+        event.preventDefault();
+        return;
+    }
+    if (THOTH_IS_TOP && event.altKey && event.shiftKey && event.code === "KeyC") {
         createOverlay();
         event.preventDefault();
         return;
@@ -489,8 +523,11 @@ const keydownHandler = function(event) {
 
     // Not gated on the local isRecording flag (unreliable in sub-frames); the
     // background is the single authority and drops events when not recording.
+    // All keys are handled here on keydown (capture phase) — keypress is
+    // unreliable because apps that preventDefault() keydown suppress it.
     const key = event.key;
-    if (!key || key.length === 1) return;        // printable handled by keypress
+    if (!key) return;
+    if (event.target && event.target.id === 'thoth-key-sink') return; // handled by the proxy
     if (THOTH_MODIFIER_KEYS.has(key)) return;    // bare modifier press
 
     const t = event.target;
@@ -507,6 +544,7 @@ const keydownHandler = function(event) {
         if (editable && isMultiline && !(event.ctrlKey || event.metaKey)) {
             // Newline inside a DOM multiline field → part of the final value.
             window.thothRecorder.lastEditableKeyTime = Date.now();
+            thothGatherKey(key, t);
             return;
         }
         send(); // submit / activate
@@ -515,11 +553,14 @@ const keydownHandler = function(event) {
 
     if (editable) {
         // DOM field: Tab/Escape are navigation actions; editing keys (Backspace,
-        // Delete, arrows, Home/End/Page...) fold into the authoritative value.
+        // Delete, arrows, Home/End/Page...) fold into the authoritative value. We
+        // also GATHER every value-affecting key so the raw sequence rides along with
+        // the committed value (future auto-fill/analysis).
         if (key === 'Tab' || key === 'Escape') {
             send();
         } else {
             window.thothRecorder.lastEditableKeyTime = Date.now();
+            thothGatherKey(key, t);
         }
         return;
     }
@@ -527,6 +568,154 @@ const keydownHandler = function(event) {
     // Visual / non-DOM target: record every named key (Backspace grouped by backend).
     send();
 };
+
+// ---------------------------------------------------------------------------
+// Keyboard input overlay for opaque visual iframes (e.g. Thinfinity).
+// Those iframes own the keyboard and we can't observe it, so instead of fighting
+// for focus we give the user an explicit input. They type into it, then confirm
+// with "Send" (text only) or "Send + Enter" / the Enter key (text then a submit
+// Enter). Each is recorded AND replayed into the iframe via CDP. Top-frame only.
+// ---------------------------------------------------------------------------
+
+// Push the typed text (and optionally a trailing Enter) into the app: record each
+// key and replay it via CDP. Then clear the field for the next entry.
+const thothSendOverlayText = function(withEnter) {
+    const input = document.getElementById('thoth-key-sink');
+    if (!input) return;
+    const text = input.value || '';
+    input.value = '';
+
+    // Refocus the target frame BEFORE replaying, so the CDP-dispatched keys land
+    // in it (dispatch only reaches the focused frame).
+    const target = thothTargetFrame || document.querySelector('iframe, frame');
+    if (target) {
+        try { target.focus(); } catch (e) { /* ignore */ }
+    }
+
+    // Give the focus change a tick to reach the (OOPIF) renderer before we
+    // dispatch, otherwise the keys arrive while our overlay is still focused.
+    setTimeout(() => {
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            safeSendMessage({ action: "tests-recorder-keypress-event", key: ch, clientTime: Date.now() }, null);
+            safeSendMessage({ action: "tests-recorder-replay-key", key: ch, code: '' }, null);
+        }
+        if (withEnter) {
+            safeSendMessage({ action: "tests-recorder-keypress-event", key: 'Enter', clientTime: Date.now() }, null);
+            safeSendMessage({ action: "tests-recorder-replay-key", key: 'Enter', code: 'Enter' }, null);
+        }
+    }, 150);
+    // Focus intentionally left on the target frame so the keys land. Click the
+    // input again (or the trigger button) to type another entry.
+};
+
+const thothOverlayKeydown = function(event) {
+    if (event.key === 'Escape') {
+        const p = document.getElementById('thoth-key-overlay');
+        if (p) p.remove();
+        event.preventDefault();
+        return;
+    }
+    if (event.key === 'Enter') {
+        // Enter = send the text and a submit Enter.
+        event.preventDefault();
+        thothSendOverlayText(true);
+        return;
+    }
+    // Everything else types into the field normally; it's captured on Send.
+};
+
+// A persistent, always-on-top button shown while recording. Needed because when
+// an opaque iframe (Thinfinity) has focus it swallows all keyboard — including
+// any hotkey — so the keyboard-input overlay must be reachable by mouse. Clicking
+// it also pulls focus out of the iframe onto our own input.
+let thothTriggerBtn = null;
+
+// Remember the iframe the user was working in. CDP-replayed keys only reach a
+// frame that is focused, so we refocus this before sending (opening our overlay
+// moved focus off it).
+let thothTargetFrame = null;
+const thothTrackFrameFocus = () => {
+    setTimeout(() => {
+        const ae = document.activeElement;
+        if (ae && (ae.tagName === 'IFRAME' || ae.tagName === 'FRAME')) {
+            thothTargetFrame = ae;
+            return; // focus entered an iframe — native capture stays as the click armed it
+        }
+        // Focus left the page for browser chrome (e.g. the address bar) or another
+        // app. Tell the background to disarm native key capture so we never record
+        // keystrokes typed outside the page. (Losing focus to an iframe is handled
+        // above; only a true page-focus-loss reaches here.)
+        if (!document.hasFocus() && window.thothRecorder.isRecording) {
+            safeSendMessage({ action: "tests-recorder-native-disarm" }, null, false);
+        }
+    }, 0);
+};
+
+function thothShowKeyboardTrigger() {
+    if (!THOTH_IS_TOP) return;
+    if (thothTriggerBtn && thothTriggerBtn.isConnected) return;
+    const btn = document.createElement('button');
+    btn.id = 'thoth-key-trigger';
+    btn.type = 'button';
+    btn.textContent = '⌨ Keyboard input';
+    btn.title = 'Send keyboard input into the app';
+    btn.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:2147483647;background:#22d3ee;' +
+        'color:#08131a;border:none;border-radius:20px;padding:8px 14px;font-family:system-ui,sans-serif;' +
+        'font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.35);';
+    btn.addEventListener('click', (e) => { e.preventDefault(); createKeyboardOverlay(); }, true);
+    (document.body || document.documentElement).appendChild(btn);
+    thothTriggerBtn = btn;
+}
+
+function thothHideKeyboardTrigger() {
+    if (thothTriggerBtn) { thothTriggerBtn.remove(); thothTriggerBtn = null; }
+    const ov = document.getElementById('thoth-key-overlay');
+    if (ov) ov.remove();
+}
+
+function createKeyboardOverlay() {
+    const existing = document.getElementById('thoth-key-overlay');
+    if (existing) { existing.remove(); return; } // toggle off
+
+    const panel = document.createElement('div');
+    panel.id = 'thoth-key-overlay';
+    panel.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147483647;' +
+        'background:#1e1e2e;color:#fff;padding:10px 12px;border-radius:10px;box-shadow:0 10px 34px rgba(0,0,0,.45);' +
+        'font-family:system-ui,sans-serif;font-size:13px;display:flex;gap:10px;align-items:center;';
+
+    const label = document.createElement('span');
+    label.textContent = 'Keyboard → app';
+    label.style.cssText = 'opacity:.7;white-space:nowrap;';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'thoth-key-sink';
+    input.placeholder = 'Type, then Send. (Enter = Send + ⏎, Esc = close)';
+    input.style.cssText = 'background:#2a2a3c;color:#fff;border:1px solid #45455a;border-radius:6px;' +
+        'padding:7px 10px;font-size:13px;min-width:280px;outline:none;';
+    input.addEventListener('keydown', thothOverlayKeydown, true);
+
+    const btnStyle = 'border:none;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;';
+    const sendBtn = document.createElement('button');
+    sendBtn.type = 'button';
+    sendBtn.textContent = 'Send';
+    sendBtn.style.cssText = btnStyle + 'background:#3a3a52;color:#fff;';
+    sendBtn.addEventListener('click', (e) => { e.preventDefault(); thothSendOverlayText(false); }, true);
+
+    const sendEnterBtn = document.createElement('button');
+    sendEnterBtn.type = 'button';
+    sendEnterBtn.textContent = 'Send + ⏎';
+    sendEnterBtn.style.cssText = btnStyle + 'background:#22d3ee;color:#08131a;';
+    sendEnterBtn.addEventListener('click', (e) => { e.preventDefault(); thothSendOverlayText(true); }, true);
+
+    panel.appendChild(label);
+    panel.appendChild(input);
+    panel.appendChild(sendBtn);
+    panel.appendChild(sendEnterBtn);
+    (document.body || document.documentElement).appendChild(panel);
+    input.focus();
+}
 
 // Visibility change handler - CRITICAL: wake up background when tab becomes visible
 const visibilityChangeHandler = () => {
@@ -717,12 +906,14 @@ const setupMessageListener = () => {
                 window.thothRecorder.isRecording = true;
                 window.thothRecorder.extensionContextValid = true;
                 console.log('[Thoth] Recording started notification received');
+                thothShowKeyboardTrigger();
                 sendResponse({ status: "ok" });
                 return true;
             }
             if (message.action === "session-stopped") {
                 window.thothRecorder.isRecording = false;
                 console.log('[Thoth] Recording stopped notification received');
+                thothHideKeyboardTrigger();
                 sendResponse({ status: "ok" });
                 return true;
             }
@@ -755,15 +946,18 @@ function initialize() {
         console.log('[Thoth] Thoth recorder UI detected — event capture suppressed on this page.');
     }
 
+    // Mark this frame as content-script-covered so the CDP reporter defers to us
+    // here (CDP only captures frames without this marker, e.g. opaque cross-origin).
+    try {
+        document.documentElement.setAttribute('data-thoth-cs', '1');
+    } catch (e) { /* ignore */ }
+
     // Remove old handlers if they exist (for clean re-initialization)
     if (window.thothRecorder.handlers.click) {
         document.removeEventListener('click', window.thothRecorder.handlers.click, true);
     }
     if (window.thothRecorder.handlers.mousedown) {
         document.removeEventListener('mousedown', window.thothRecorder.handlers.mousedown, true);
-    }
-    if (window.thothRecorder.handlers.keypress) {
-        document.removeEventListener('keypress', window.thothRecorder.handlers.keypress);
     }
     if (window.thothRecorder.handlers.keydown) {
         document.removeEventListener('keydown', window.thothRecorder.handlers.keydown, true);
@@ -783,12 +977,10 @@ function initialize() {
     if (window.thothRecorder.handlers.pageshow) {
         window.removeEventListener('pageshow', window.thothRecorder.handlers.pageshow);
     }
-    
     // Store new handlers
     window.thothRecorder.handlers = {
         click: clickHandler,
         mousedown: mousedownHandler,
-        keypress: keypressHandler,
         keydown: keydownHandler,
         scroll: scrollHandler,
         change: changeHandler,
@@ -800,7 +992,6 @@ function initialize() {
     // Event listeners — captured in every frame so iframe interactions are seen.
     document.addEventListener('click', clickHandler, true);
     document.addEventListener('mousedown', mousedownHandler, true);
-    document.addEventListener('keypress', keypressHandler);
     document.addEventListener('keydown', keydownHandler, true);
     window.addEventListener('scroll', scrollHandler, true);
     document.addEventListener('change', changeHandler, true);
@@ -824,6 +1015,11 @@ function initialize() {
         document.addEventListener('visibilitychange', visibilityChangeHandler);
         window.addEventListener('focus', focusHandler);
         window.addEventListener('pageshow', pageShowHandler);
+        // Track which iframe the user is in, to refocus it when sending keys.
+        if (!window.thothRecorder.frameFocusTrackerSet) {
+            window.addEventListener('blur', thothTrackFrameFocus);
+            window.thothRecorder.frameFocusTrackerSet = true;
+        }
 
         if (!window.thothRecorder.keepAliveSet) {
             setInterval(() => {

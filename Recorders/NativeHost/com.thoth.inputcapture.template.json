@@ -1,0 +1,9 @@
+{
+  "name": "com.thoth.inputcapture",
+  "description": "Thoth recorder OS-level keyboard capture for opaque iframes",
+  "path": "__EXE_PATH__",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://__EXTENSION_ID__/"
+  ]
+}
