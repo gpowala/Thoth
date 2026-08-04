@@ -72,8 +72,8 @@ export class RecordingService {
         this.sessions.get(guid)?.registerClickEvent(x, y, clickViewStream, target, clientTime);
     }
 
-    public registerKeypressEvent(guid: string, key: string, clientTime?: number): void {
-        this.sessions.get(guid)?.registerKeypressEvent(key, clientTime);
+    public registerKeypressEvent(guid: string, key: string, clientTime?: number, target?: TargetMeta): void {
+        this.sessions.get(guid)?.registerKeypressEvent(key, clientTime, target);
     }
 
     public registerAreaSelectEvent(guid: string, top: number, bottom: number, left: number, right: number, areaSelectViewStream: Buffer, dpr: number = 1, clientTime?: number): void {

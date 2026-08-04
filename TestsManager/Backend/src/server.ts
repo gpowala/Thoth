@@ -224,6 +224,18 @@ app.get('/recording/events/keypress', async (req: Request, res: Response) => {
     res.status(200).send('Keypress event registered successfully.');
 });
 
+// Keystroke into an editable DOM field: carries the field target, so the backend
+// buffers it into that field's input-event run instead of emitting a standalone
+// keyboard text step (the visual/iframe GET path above).
+app.post('/recording/events/keypress', upload.none(), async (req: Request, res: Response) => {
+    const { guid } = req.query;
+    const key = (req.body?.key as string) ?? '';
+    const clientTime = Number(req.body?.clientTime);
+    const target = parseTargetMeta(req.body?.metadata);
+    recordingService.registerKeypressEvent(guid as string, key, clientTime, target);
+    res.status(200).send('Keypress event registered successfully.');
+});
+
 app.post('/recording/events/scroll', upload.single('view'), async (req: Request, res: Response) => {
     const { guid } = req.query;
     const x = Number(req.body?.x);

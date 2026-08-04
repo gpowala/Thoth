@@ -257,7 +257,7 @@ const handleMessage = (message, sender, sendResponse) => {
             recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right, message.dpr, message.clientTime);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-keypress-event") {
-            recordKeypressEvent(message.key, message.clientTime);
+            recordKeypressEvent(message.key, message.clientTime, message.metadata);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-scroll-event") {
             recordScrollEvent(sender, message.scroll, message.metadata, message.clientTime);
@@ -489,12 +489,28 @@ const recordAreaSelectEvent = (sender, top, bottom, left, right, dpr, clientTime
     });
 };
 
-// Record keypress event
-const recordKeypressEvent = (key, clientTime) => {
+// Record keypress event.
+// With `metadata` (a DOM field target) the keystroke is POSTed so the backend can
+// buffer it into that field's input-event run instead of emitting a standalone
+// text step. Without metadata (visual/iframe and native OS keys) it stays the
+// lightweight GET that the backend groups into a keyboard text step.
+const recordKeypressEvent = (key, clientTime, metadata) => {
+    const ct = clientTime || Date.now();
+
+    if (metadata) {
+        const formData = new FormData();
+        formData.append('key', key);
+        formData.append('clientTime', String(ct));
+        formData.append('metadata', JSON.stringify(metadata));
+        fetch(`${serverUrl}/recording/events/keypress?guid=${sessionId}`, { method: 'POST', body: formData })
+            .then(() => console.log('[Background] Keypress (field) recorded'))
+            .catch((error) => console.error('[Background] Keypress record error:', error));
+        return;
+    }
+
     // Encode the key so control chars (\n), spaces and reserved chars (& = ?)
     // survive the query string; the backend decodes it once.
-    const url = `${serverUrl}/recording/events/keypress?guid=${sessionId}&key=${encodeURIComponent(key)}&clientTime=${clientTime || Date.now()}`;
-
+    const url = `${serverUrl}/recording/events/keypress?guid=${sessionId}&key=${encodeURIComponent(key)}&clientTime=${ct}`;
     fetch(url, { method: 'GET' })
         .then(() => console.log('[Background] Keypress event recorded'))
         .catch((error) => console.error('[Background] Keypress record error:', error));

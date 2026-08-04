@@ -33,6 +33,14 @@ export class RecordingSession extends EventEmitter {
     private pendingKeypress: { kind: 'text' | 'backspace'; text: string; count: number; timestamp: Date } | null = null;
     private keypressFlushTimer: NodeJS.Timeout | null = null;
 
+    // Per-keystroke run streamed from an editable DOM field (target-tagged). Unlike
+    // pendingKeypress (visual/iframe → a standalone text step), this is buffered and
+    // attached to the field's committed-value InputEvent, so DOM typing records
+    // keystroke-by-keystroke but still replays as a single fill(). Keyed by target
+    // so switching fields starts a fresh run.
+    private pendingInputKeys: KeyStroke[] = [];
+    private pendingInputKeysTarget: string | null = null;
+
     constructor(
         httpContext: HttpContext
     ) {
@@ -168,8 +176,12 @@ export class RecordingSession extends EventEmitter {
     public async registerInputEvent(controlType: InputControlType, value: string, checked: boolean, viewStream: Buffer, target?: TargetMeta, selectedText?: string, clientTime?: number, keys?: KeyStroke[]): Promise<void> {
         this.flushPendingKeypress();
         try {
+            // Attach the per-keystroke run streamed live for this field. Paste /
+            // autofill leave it empty (no keystrokes) while the value still captures.
+            const streamed = this.takeBufferedInputKeys(target);
+            const runKeys = streamed.length ? streamed : keys;
             const view = await this.saveFullView('input', viewStream);
-            this.recordedEvents.push(new InputEvent(this.tsOf(clientTime), controlType, value, checked, view.filepath, view.base64, target, selectedText, keys));
+            this.recordedEvents.push(new InputEvent(this.tsOf(clientTime), controlType, value, checked, view.filepath, view.base64, target, selectedText, runKeys));
         } catch (error) {
             console.error('Error in registerInputEvent:', error);
             throw error;
@@ -198,7 +210,41 @@ export class RecordingSession extends EventEmitter {
         return { filepath, base64: viewStream.toString('base64') };
     }
 
-    public async registerKeypressEvent(key: string, clientTime?: number): Promise<void> {
+    // Stable identity for a field target, so a run of keystrokes is attributed to
+    // the field it was typed into.
+    private targetKeyOf(target?: TargetMeta): string {
+        if (!target) return '';
+        const s: any = (target as any).selectors || {};
+        return s.xpath || s.css || s.id || s.testId || JSON.stringify(target);
+    }
+
+    // Buffer one streamed DOM-field keystroke. Switching fields resets the run.
+    private bufferInputKey(key: string, clientTime: number | undefined, target?: TargetMeta): void {
+        const tk = this.targetKeyOf(target);
+        if (tk !== this.pendingInputKeysTarget) {
+            this.pendingInputKeys = [];
+            this.pendingInputKeysTarget = tk;
+        }
+        this.pendingInputKeys.push({ key, t: clientTime && !isNaN(clientTime) ? clientTime : Date.now() });
+    }
+
+    // Detach the buffered run for a committing field (only if it belongs to it).
+    private takeBufferedInputKeys(target?: TargetMeta): KeyStroke[] {
+        const tk = this.targetKeyOf(target);
+        const keys = (tk && tk === this.pendingInputKeysTarget) ? this.pendingInputKeys : [];
+        this.pendingInputKeys = [];
+        this.pendingInputKeysTarget = null;
+        return keys;
+    }
+
+    public async registerKeypressEvent(key: string, clientTime?: number, target?: TargetMeta): Promise<void> {
+        // A target means this is a keystroke into an editable DOM field: buffer it
+        // (attached to the field's InputEvent on commit) rather than emitting a
+        // standalone keyboard text step.
+        if (target) {
+            this.bufferInputKey(key, clientTime, target);
+            return;
+        }
         try {
             // Backspace runs collapse into one "[Backspace ×N]" step (visual/canvas
             // text entry; DOM fields suppress these and rely on the final value).

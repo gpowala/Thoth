@@ -233,8 +233,31 @@ export function generatePlaywrightProject(events: SerializedEvent[], testName: s
     const body: string[] = [];
     const assets: CodegenAsset[] = [];
 
+    // Derive a fill from order of operations: a click on a DOM (non-visual) field
+    // immediately followed by a typed text run IS a fill, so collapse the two into a
+    // single `locator.fill(text)`. Visual (canvas/iframe) clicks and action-key runs
+    // (e.g. [Enter]) are left as-is.
+    const consumed = new Set<number>();
+    const parseData = (e: SerializedEvent): any => { try { return JSON.parse(e.data); } catch { return {}; } };
+
     events.forEach((event, index) => {
-        const step = stepFor(event, index);
+        if (consumed.has(index)) return;
+
+        let step: StepOutput | null = null;
+        if (event.type === 'click') {
+            const clickData = parseData(event);
+            const next = events[index + 1];
+            if (!isVisual(clickData) && next && next.type === 'keypress') {
+                const keys: string = parseData(next).keys ?? '';
+                const isActionRun = /^\[.+\]$/.test(keys);
+                if (!isActionRun && keys.length > 0) {
+                    step = { lines: [`${locatorExpr(clickData.selectors)}.fill(${py(keys)})`] };
+                    consumed.add(index + 1);
+                }
+            }
+        }
+        if (!step) step = stepFor(event, index);
+
         if (step.asset) {
             assets.push(step.asset);
         }

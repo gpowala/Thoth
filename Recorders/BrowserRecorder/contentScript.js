@@ -15,13 +15,7 @@ window.thothRecorder = window.thothRecorder || {
     // This frame's cumulative offset within the TOP viewport (CSS px). Resolved via
     // a postMessage handshake with ancestor frames so clicks inside (even
     // cross-origin) iframes translate to top-viewport coordinates.
-    frameOffset: { x: 0, y: 0 },
-    // Raw keystroke sequence typed into the current editable DOM field, gathered
-    // alongside the authoritative committed value and attached to the input event
-    // (not used for replay today; retained for future auto-fill/analysis). Tied to
-    // the field element so switching fields starts a fresh sequence.
-    gatheredKeys: [],
-    gatheredKeysEl: null
+    frameOffset: { x: 0, y: 0 }
 };
 
 // The content script runs in every frame (manifest all_frames). Session
@@ -451,14 +445,19 @@ const changeHandler = function(event) {
     // For text fields, order this event at the last keystroke (i.e. just before
     // the key that committed it, such as Enter). Other controls use now.
     const isTextField = controlType === 'text';
+
+    // Text typed key-by-key was already recorded live as a keystroke run; don't
+    // also emit a value step for it (that would duplicate). Paste/autofill never
+    // marked the field, so their committed value DOES record here.
+    if (isTextField && thothTypedFields.has(t)) {
+        thothTypedFields.delete(t);
+        return;
+    }
+
     const clientTime = (isTextField && window.thothRecorder.lastEditableKeyTime)
         ? window.thothRecorder.lastEditableKeyTime
         : Date.now();
     window.thothRecorder.lastEditableKeyTime = 0;
-
-    // Supplementary raw keystrokes gathered while typing this text field (empty for
-    // non-text controls, paste-only entries, or autofill).
-    const gatheredKeys = isTextField ? thothTakeGatheredKeys(t) : [];
 
     safeSendMessage({
         action: "tests-recorder-input-event",
@@ -467,38 +466,17 @@ const changeHandler = function(event) {
         checked: checked,
         selectedText: selectedText,
         metadata: thothBuildTargetMeta(t),
-        keys: gatheredKeys,
         clientTime: clientTime
     }, 'Input event captured');
 };
 
-// Cap on gathered keystrokes per field (guards against unbounded growth if a
-// field is typed into for a very long time without ever committing).
-const THOTH_MAX_GATHERED_KEYS = 2000;
-
-// Gather one value-affecting keystroke typed into an editable DOM field. Tied to
-// the field element: if focus moved to a different field (even without a `change`
-// having fired), the sequence resets so keys never bleed across fields.
-const thothGatherKey = (key, el) => {
-    const r = window.thothRecorder;
-    if (r.gatheredKeysEl !== el) {
-        r.gatheredKeys = [];
-        r.gatheredKeysEl = el;
-    }
-    if (r.gatheredKeys.length < THOTH_MAX_GATHERED_KEYS) {
-        r.gatheredKeys.push({ key: key, t: Date.now() });
-    }
-};
-
-// Detach the gathered sequence for a committed field and reset the buffer. Returns
-// the keys only when they belong to the element being committed.
-const thothTakeGatheredKeys = (el) => {
-    const r = window.thothRecorder;
-    const keys = (r.gatheredKeysEl === el) ? r.gatheredKeys : [];
-    r.gatheredKeys = [];
-    r.gatheredKeysEl = null;
-    return keys;
-};
+// Editable DOM fields whose keystrokes we've already recorded live (like the
+// iframe). Used so the field's `change` on blur does NOT additionally emit a value
+// step for text that was typed — the per-keystroke run already captured it. Paste
+// and autofill never mark the field, so their committed value still records via
+// `change`. (Playback collapses "click field + typed run" into one fill; see
+// playwright-codegen.) WeakSet so entries clear when the element is gone.
+const thothTypedFields = new WeakSet();
 
 // Bare modifier presses we never record as their own step.
 const THOTH_MODIFIER_KEYS = new Set([
@@ -542,9 +520,11 @@ const keydownHandler = function(event) {
     if (key === 'Enter') {
         const isMultiline = !!t && (t.tagName === 'TEXTAREA' || t.isContentEditable === true);
         if (editable && isMultiline && !(event.ctrlKey || event.metaKey)) {
-            // Newline inside a DOM multiline field → part of the final value.
+            // Newline inside a DOM multiline field → record as text ("\n") so it
+            // folds into the typed run rather than a discrete [Enter] step.
             window.thothRecorder.lastEditableKeyTime = Date.now();
-            thothGatherKey(key, t);
+            thothTypedFields.add(t);
+            safeSendMessage({ action: "tests-recorder-keypress-event", key: '\n', clientTime: Date.now() }, null);
             return;
         }
         send(); // submit / activate
@@ -552,15 +532,16 @@ const keydownHandler = function(event) {
     }
 
     if (editable) {
-        // DOM field: Tab/Escape are navigation actions; editing keys (Backspace,
-        // Delete, arrows, Home/End/Page...) fold into the authoritative value. We
-        // also GATHER every value-affecting key so the raw sequence rides along with
-        // the committed value (future auto-fill/analysis).
+        // DOM field: keystrokes are recorded LIVE (like the iframe) — the backend
+        // groups a consecutive run into one text step; no waiting for blur. Tab/
+        // Escape stay discrete; every other key is recorded, and the field is marked
+        // so its `change` won't also emit a duplicate value step.
         if (key === 'Tab' || key === 'Escape') {
             send();
         } else {
             window.thothRecorder.lastEditableKeyTime = Date.now();
-            thothGatherKey(key, t);
+            thothTypedFields.add(t);
+            send();
         }
         return;
     }
