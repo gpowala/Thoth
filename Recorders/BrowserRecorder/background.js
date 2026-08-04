@@ -257,7 +257,15 @@ const handleMessage = (message, sender, sendResponse) => {
             recordAreaSelectEvent(sender, message.rect.top, message.rect.bottom, message.rect.left, message.rect.right, message.dpr, message.clientTime);
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-keypress-event") {
-            recordKeypressEvent(message.key, message.clientTime, message.metadata);
+            // While the native OS hook owns the keyboard (armed inside an opaque
+            // frame) it is the authority for keystrokes — mirror the CDP dedup and
+            // drop the content-script keydown copy so the key isn't recorded twice.
+            // Overlay-injected keys carry no viaKeydown flag and are always recorded.
+            if (message.viaKeydown && nativeArmed && nativePort) {
+                if (THOTH_CLICK_DEBUG) console.log('[Background][native] drop CS keydown (native owns it):', message.key);
+            } else {
+                recordKeypressEvent(message.key, message.clientTime, message.metadata);
+            }
             sendResponse({ success: true });
         } else if (message.action === "tests-recorder-scroll-event") {
             recordScrollEvent(sender, message.scroll, message.metadata, message.clientTime);
@@ -709,7 +717,7 @@ const CDP_CAPTURE_SCRIPT = `(function(){
   function classify(el){ if(!el||el.nodeType!==1) return 'visual'; var t=el.tagName; if(t==='CANVAS'||t==='IFRAME'||t==='FRAME') return 'visual'; if(el.ownerDocument&&el.ownerDocument!==document) return 'visual'; return el.id ? 'dom' : 'dom-weak'; }
   function pt(e){ var dpr=window.devicePixelRatio||1; return { x: Math.round((e.clientX+frameOffset.x)*dpr), y: Math.round((e.clientY+frameOffset.y)*dpr) }; }
   var MOD = ['Shift','Control','Alt','Meta','CapsLock','NumLock','ScrollLock','ContextMenu','OS','AltGraph','Dead'];
-  document.addEventListener('click', function(e){ if(hasContentScript()) return; if(e.target&&(e.target.tagName==='IFRAME'||e.target.tagName==='FRAME')) return; var p=pt(e); report({kind:'click', x:p.x, y:p.y, targetKind:classify(e.target), tag:e.target?e.target.tagName:null, id:(e.target&&e.target.id)||null, clientTime:Date.now()}); }, true);
+  document.addEventListener('click', function(e){ if(hasContentScript()) return; if(e.detail===0) return; if(e.target&&(e.target.tagName==='IFRAME'||e.target.tagName==='FRAME')) return; var p=pt(e); report({kind:'click', x:p.x, y:p.y, targetKind:classify(e.target), tag:e.target?e.target.tagName:null, id:(e.target&&e.target.id)||null, clientTime:Date.now()}); }, true);
   // All keys on keydown (printable + named): streaming apps often preventDefault
   // keydown, which would suppress keypress. window+capture to fire as early as possible.
   window.addEventListener('keydown', function(e){ if(hasContentScript()) return; var k=e.key; if(!k) return; if(MOD.indexOf(k)>=0) return; report({kind:'key', key:k, clientTime:Date.now()}); }, true);

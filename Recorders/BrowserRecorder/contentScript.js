@@ -307,6 +307,12 @@ const clickHandler = function(event) {
 
     if (thothIsFrameElement(event.target)) return;
     if (thothIsOwnUi(event.target)) return;
+    // Keyboard-activated (Enter/Space on a focused control) and other synthetic
+    // clicks carry no pointer position — the browser reports them at (0,0) with
+    // detail===0. The activation is already captured as the key press, so recording
+    // the click too would add a spurious (0,0) step. Real pointer clicks always
+    // have detail>=1.
+    if (event.detail === 0) return;
 
     const dpr = window.devicePixelRatio || 1;
     const coords = thothPointerCoords(event);
@@ -511,9 +517,13 @@ const keydownHandler = function(event) {
     const t = event.target;
     const editable = thothIsEditableDomField(t);
 
+    // viaKeydown marks this as a live physical keydown (vs an overlay-injected key):
+    // while the native OS hook owns the keyboard inside an opaque frame it records
+    // the same keystroke, so the background drops this copy to avoid doubling.
     const send = () => safeSendMessage({
         action: "tests-recorder-keypress-event",
         key: key,
+        viaKeydown: true,
         clientTime: Date.now()
     }, 'Keypress event captured');
 
@@ -524,7 +534,7 @@ const keydownHandler = function(event) {
             // folds into the typed run rather than a discrete [Enter] step.
             window.thothRecorder.lastEditableKeyTime = Date.now();
             thothTypedFields.add(t);
-            safeSendMessage({ action: "tests-recorder-keypress-event", key: '\n', clientTime: Date.now() }, null);
+            safeSendMessage({ action: "tests-recorder-keypress-event", key: '\n', viaKeydown: true, clientTime: Date.now() }, null);
             return;
         }
         send(); // submit / activate
