@@ -273,9 +273,6 @@ const handleMessage = (message, sender, sendResponse) => {
         } else if (message.action === "tests-recorder-input-event") {
             recordInputEvent(sender, message);
             sendResponse({ success: true });
-        } else if (message.action === "tests-recorder-replay-key") {
-            cdpReplayKey(message.key, message.code);
-            sendResponse({ success: true });
         } else if (message.action === "tests-recorder-native-disarm") {
             // Page lost focus to browser chrome / another app — stop capturing keys.
             setNativeArmed(false);
@@ -636,64 +633,9 @@ if (chrome.webNavigation) {
 // ---------------------------------------------------------------------------
 
 let cdpTabId = -1;
-// Child (frame) debugger sessions, so we can replay keys into opaque OOPIF
-// frames like Thinfinity via CDP Input.dispatchKeyEvent.
+// Child (frame) debugger sessions attached via Target.setAutoAttach, tracked so
+// CDP capture can be (re)installed on each OOPIF frame (e.g. Thinfinity).
 const cdpChildSessions = new Set();
-
-// Best-effort key -> CDP key-event params. Enough for typing + common edit keys.
-const CDP_NAMED_KEYS = {
-    Enter: { code: 'Enter', vk: 13, text: '\r' },
-    Backspace: { code: 'Backspace', vk: 8 },
-    Tab: { code: 'Tab', vk: 9 },
-    Escape: { code: 'Escape', vk: 27 },
-    Delete: { code: 'Delete', vk: 46 },
-    ArrowLeft: { code: 'ArrowLeft', vk: 37 },
-    ArrowUp: { code: 'ArrowUp', vk: 38 },
-    ArrowRight: { code: 'ArrowRight', vk: 39 },
-    ArrowDown: { code: 'ArrowDown', vk: 40 },
-    Home: { code: 'Home', vk: 36 },
-    End: { code: 'End', vk: 35 }
-};
-
-const cdpKeyParams = (key, code) => {
-    if (key && key.length === 1) {
-        const upper = key.toUpperCase();
-        let c = code;
-        if (!c) {
-            if (/[a-zA-Z]/.test(key)) c = 'Key' + upper;
-            else if (/[0-9]/.test(key)) c = 'Digit' + key;
-            else c = '';
-        }
-        const vk = upper.charCodeAt(0);
-        return { key: key, code: c, text: key, unmodifiedText: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk };
-    }
-    const n = CDP_NAMED_KEYS[key];
-    if (n) return { key: key, code: n.code, text: n.text || '', windowsVirtualKeyCode: n.vk, nativeVirtualKeyCode: n.vk };
-    return { key: key, code: code || '' };
-};
-
-// Replay a key into the opaque frame(s) so the app (e.g. Thinfinity) receives it
-// even though we stole focus to the top-frame sink to capture it.
-const cdpReplayKey = (key, code) => {
-    if (cdpTabId < 0 || !chrome.debugger) return;
-    const p = cdpKeyParams(key, code);
-    const ignore = () => { void chrome.runtime.lastError; };
-    const printable = !!key && key.length === 1;
-    // Dispatch to the TOP (tab) session, NOT a child session. When the iframe has
-    // been refocused (see the overlay send), the top session routes input to the
-    // focused frame — including cross-origin OOPIFs. Dispatching straight to the
-    // child session (previous attempt) did not deliver.
-    const dbg = { tabId: cdpTabId };
-    if (printable) {
-        // Canonical char sequence: rawKeyDown (fires keydown) → char (character) → keyUp.
-        chrome.debugger.sendCommand(dbg, "Input.dispatchKeyEvent", { type: 'rawKeyDown', key: p.key, code: p.code, windowsVirtualKeyCode: p.windowsVirtualKeyCode, nativeVirtualKeyCode: p.nativeVirtualKeyCode }, ignore);
-        chrome.debugger.sendCommand(dbg, "Input.dispatchKeyEvent", { type: 'char', key: p.key, text: p.text, unmodifiedText: p.unmodifiedText }, ignore);
-        chrome.debugger.sendCommand(dbg, "Input.dispatchKeyEvent", { type: 'keyUp', key: p.key, code: p.code, windowsVirtualKeyCode: p.windowsVirtualKeyCode, nativeVirtualKeyCode: p.nativeVirtualKeyCode }, ignore);
-    } else {
-        chrome.debugger.sendCommand(dbg, "Input.dispatchKeyEvent", Object.assign({ type: 'keyDown' }, p), ignore);
-        chrome.debugger.sendCommand(dbg, "Input.dispatchKeyEvent", Object.assign({ type: 'keyUp' }, p), ignore);
-    }
-};
 
 // Runs in each frame's main world. Reports input only when this frame has NO
 // content script (no data-thoth-cs marker), so it fills the gaps content scripts

@@ -13,6 +13,11 @@
 > native messaging host (`Recorders/NativeHost/`) with a `WH_KEYBOARD_LL` hook
 > observes them below Thinfinity's grab. The overlay/CDP-replay path (§4.6, §5) is
 > now a fallback, not the primary mechanism.
+>
+> **UPDATE 2026-08-04 — overlay/CDP-replay path REMOVED.** Native capture (§10) is
+> the sole keyboard mechanism for opaque iframes, so the keyboard-input overlay, its
+> ⌨ trigger button, and CDP key replay (`cdpReplayKey`) were deleted. **Alt+Shift+W
+> is restored to area-select**; there is no longer an Alt+Shift+C.
 
 ---
 
@@ -142,25 +147,21 @@ Extension: `Recorders/BrowserRecorder/`
 - `manifest.json` — `all_frames: true`; permissions include `webNavigation`,
   `debugger`.
 - `contentScript.js`:
-  - Runs in all frames; top-frame does session mgmt + the keyboard overlay.
-  - **Keyboard overlay**: `createKeyboardOverlay()`, `thothSendOverlayText()`,
-    `thothOverlayKeydown()`; trigger button `thothShowKeyboardTrigger()` /
-    `thothHideKeyboardTrigger()` shown while recording.
-  - Last-focused-iframe tracker: `thothTargetFrame` + `thothTrackFrameFocus`
-    (`window` blur).
-  - Own-UI guard `thothIsOwnUi` so overlay/button clicks aren't recorded.
+  - Runs in all frames; top-frame does session mgmt.
+  - Native-capture disarm on true page-focus-loss: `thothTrackFrameFocus`
+    (`window` blur) tells the background to disarm when focus leaves the page —
+    but not when it enters an iframe (that keeps native capture armed).
 - `background.js`:
   - CDP attach/detach on record start/stop; `setupCdpTarget()` with
     `Target.setAutoAttach({ waitForDebuggerOnStart: true, flatten: true })`.
   - Injected reporter `CDP_CAPTURE_SCRIPT` (clicks + offset handshake; keydown was
     left in but is ineffective against Thinfinity).
-  - `cdpChildSessions` set; `cdpReplayKey()` dispatches `Input.dispatchKeyEvent`
-    (rawKeyDown → char → keyUp for printable) to child sessions. **This is the part
-    that isn't delivering to Thinfinity.**
+  - `cdpChildSessions` set tracks attached OOPIF child debugger sessions so CDP
+    capture is installed on each. (CDP key *replay* was removed — native capture,
+    §10, is the sole keyboard mechanism.)
 
-### Shortcuts (changed this session)
-- **Alt+Shift+W** → keyboard-input overlay (was area-select).
-- **Alt+Shift+C** → area-select overlay (moved from W).
+### Shortcuts
+- **Alt+Shift+W** → area-select overlay (spans the tab).
 
 ---
 
