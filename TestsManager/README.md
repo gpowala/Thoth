@@ -118,7 +118,18 @@ the two can be hosted on different origins.
 
 ## Desktop app (everything together)
 
-From `TestsManager/Desktop`:
+Quickest way, from `TestsManager` (or double-click it in Explorer):
+
+```bat
+build-desktop.bat        :: installer + portable .exe in Desktop\release (same as "dist")
+build-desktop.bat pack   :: unpacked app only, in Desktop\release\win-unpacked
+```
+
+It runs `npm install` where `node_modules` is missing and replaces `Desktop\release`. Then it runs
+`npm run dist` (or `npm run pack`) in `Desktop` and prints the built `.exe` paths. If any step fails,
+it exits with a non-zero code.
+
+Step by step, from `TestsManager/Desktop`:
 
 ```bat
 npm install
