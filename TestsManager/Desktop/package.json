@@ -1,0 +1,79 @@
+{
+  "name": "thoth-tests-manager-desktop",
+  "productName": "Thoth Tests Manager",
+  "version": "1.0.0",
+  "description": "Desktop (Electron) host for Thoth Tests Manager. Consumes the Backend and Frontend build outputs.",
+  "private": true,
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke-test": "electron . --smoke-test",
+    "build:all": "node scripts/build-all.js",
+    "prepare:backend": "node scripts/prepare-backend.js",
+    "prepare:node": "node scripts/prepare-node.js",
+    "pack": "node scripts/build-all.js && electron-builder --dir --publish never",
+    "dist": "node scripts/build-all.js && electron-builder --publish never"
+  },
+  "author": "",
+  "license": "ISC",
+  "build": {
+    "appId": "com.thoth.testsmanager",
+    "productName": "Thoth Tests Manager",
+    "publish": null,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../Backend/dist",
+        "to": "backend/dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../Backend/package.json",
+        "to": "backend/package.json"
+      },
+      {
+        "from": "staging/backend/node_modules",
+        "to": "backend/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../Frontend/dist/thot-test-manager/browser",
+        "to": "frontend",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "resources/node",
+        "to": "node",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  }
+}

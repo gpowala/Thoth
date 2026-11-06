@@ -1,27 +1,28 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+
+/**
+ * Optional bridge to the desktop shell (TestsManager/Desktop preload script).
+ * In a regular browser `window.thothDesktop` is undefined and every method
+ * degrades gracefully, so the web app never depends on Electron.
+ */
+interface ThothDesktopApi {
+  isDesktop: boolean;
+  selectDirectory(): Promise<string | null>;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class ElectronIpcService {
-  private backendPortSubject = new BehaviorSubject<number>(3000);
-  backendPortSubject$ = this.backendPortSubject.asObservable();
-
-  constructor() {
-    if ((window as any).electronAPI) {
-      console.log('ElectronIpcService created and connected to backend.');
-      (window as any).electronAPI.onBackendReady((port: number) => {
-        console.log('ElectronIpcService: Backend port changed to ', port);
-        this.backendPortSubject.next(port);
-      });
-    }
+  private get desktop(): ThothDesktopApi | undefined {
+    return (window as any).thothDesktop;
   }
 
-  async selectDirectory() {
-    if ((window as any).electronAPI)
-      return await (window as any).electronAPI.onFrontendSelectDirectory();
-    else
-      return null;
+  get isDesktop(): boolean {
+    return !!this.desktop?.isDesktop;
+  }
+
+  async selectDirectory(): Promise<string | null> {
+    return this.desktop ? await this.desktop.selectDirectory() : null;
   }
 }

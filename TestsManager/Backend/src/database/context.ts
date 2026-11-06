@@ -1,5 +1,6 @@
 import { Sequelize, DataTypes, ModelStatic, Model } from 'sequelize';
 import path from 'path';
+import { resolveDataPath } from '../utils/data-dir';
 
 let sequelize: Sequelize | null = null;
 let RepositoryModel: ModelStatic<Model> | null = null;
@@ -37,7 +38,7 @@ const defineRepository = (instance: Sequelize): ModelStatic<Model> => {
 };
 
 export const getDefaultDatabasePath = (): string => {
-  return path.join(__dirname, '..', '..', 'thoth_tests_manager.sqlite');
+  return resolveDataPath('thoth_tests_manager.sqlite', path.join(__dirname, '..', '..', 'thoth_tests_manager.sqlite'));
 };
 
 /**

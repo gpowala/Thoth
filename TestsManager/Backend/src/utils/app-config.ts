@@ -1,12 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { getDefaultDatabasePath } from '../database/context';
+import { resolveDataPath } from './data-dir';
 
 export interface AppConfig {
   databasePath: string;
 }
 
-const configFilePath = path.join(__dirname, '..', '..', 'config.json');
+const configFilePath = resolveDataPath('config.json', path.join(__dirname, '..', '..', 'config.json'));
 
 const readRawConfig = (): Partial<AppConfig> => {
   try {

@@ -8,12 +8,14 @@ import { RecordingSession } from './recording/recording-session';
 import { parseTargetMeta } from './recording/events/target-meta';
 import { initDatabase, getRepository, getDefaultDatabasePath } from './database/context';
 import { getConfig, setConfig } from './utils/app-config';
+import { resolveDataPath } from './utils/data-dir';
 const simpleGit = require('simple-git');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const port = Number(process.argv[2]) || 3000; // Read port from Electron
+// PORT env var (e.g. set by the desktop shell) > first CLI argument > 3000.
+const port = Number(process.env.PORT) || Number(process.argv[2]) || 3000;
 
 app.use(express.json());
 
@@ -33,6 +35,10 @@ app.use((req, res, next) => {
       Object.entries(req.query).map(([key, value]) => [key, decodeURIComponent(value as string)])
   );
   next();
+});
+
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok' });
 });
 
 const httpContext = new HttpContext('http', os.hostname(), port);
@@ -565,7 +571,7 @@ app.put('/configuration', async (req: Request, res: Response) => {
 });
 
 app.get('/configuration/default-repositories-directory', async (req: Request, res: Response) => {
-    const defaultRepositoryDirectory = path.join(__dirname, '..', '..', 'repositories');
+    const defaultRepositoryDirectory = resolveDataPath('repositories', path.join(__dirname, '..', '..', 'repositories'));
     res.status(200).json({ defaultRepositoryDirectory: defaultRepositoryDirectory });
 });
 
